@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>PlayerLens — Wallet Verdict</title>
+<title>DepositScope — Wallet Verdict</title>
 <meta name="description" content="Player wallet verdict in seconds — VIP score, risk flags, gambling footprint. TRON / USDT.">
 <style>
   :root{
@@ -90,7 +90,7 @@
 <body>
 <div class="wrap">
   <div class="topbar">
-    <div class="logo">Player<span>Lens</span></div>
+    <div class="logo">Deposit<span>Scope</span></div>
     <a class="back" href="index.html">← Back to site</a>
   </div>
   <div class="tagline">Player-level verdict in seconds — VIP, risk, gambling footprint. One wallet or the player's whole entity.</div>
@@ -167,7 +167,7 @@
   </div>
 
   <div class="footer">
-    Verdicts come from the live PlayerLens API — the same profiler, scoring and label database
+    Verdicts come from the live DepositScope API — the same profiler, scoring and label database
     our clients call in production. Nothing is recomputed in the browser.<br>
     Footprint accuracy depends on the casino label database and improves as it grows; every
     verdict states which chains and assets it was built on.
@@ -192,7 +192,7 @@
 /* ?api=http://localhost:8000 — щоб ганяти сторінку проти локального продукту
    під час розробки. У чужому браузері це нічого не відкриває: ключ демо і так
    лежить у цьому ж браузері, а сервер приймає лише свої домени. */
-const API = new URLSearchParams(location.search).get("api") || "https://app.88-99-172-144.sslip.io";
+const API = new URLSearchParams(location.search).get("api") || "https://app.depositscope.com";
 const STORAGE_KEY = "playerlens_demo_key";
 const CONTACT = "playerdetector@gmail.com";
 
