@@ -79,6 +79,7 @@
     color:var(--text);padding:11px 13px;font-size:14px}
   .gate-row button{background:var(--grad);border:0;border-radius:10px;color:#fff;font-weight:700;
     padding:11px 20px;font-size:14px;cursor:pointer}
+  .resend{align-self:center;color:var(--muted);font-size:13px;text-decoration:underline;cursor:pointer}
   .checks{background:var(--card2);border:1px solid var(--border);border-radius:12px;
     padding:3px 10px;font-size:11px;margin-right:10px}
   .cov-line{font-size:13px;color:var(--muted);line-height:1.7}
@@ -98,11 +99,17 @@
     <div class="gate-head">Check your own players — 10 free verdicts</div>
     <p class="gate-note">Same engine our clients call in production: same scoring, same label
     database. Leave a work email and the demo opens right here.</p>
-    <div class="gate-row">
+    <div id="emailRow" class="gate-row">
       <input id="email" type="email" placeholder="you@casino.com" spellcheck="false">
       <input id="company" placeholder="Casino (optional)" spellcheck="false">
       <button id="signup">Open the demo</button>
     </div>
+    <div id="codeRow" class="gate-row hidden">
+      <input id="code" inputmode="numeric" maxlength="6" placeholder="6-digit code" spellcheck="false">
+      <button id="verify">Confirm</button>
+      <a id="resend" class="resend">Send it again</a>
+    </div>
+    <div id="codeNote" class="gate-note hidden"></div>
     <div id="gateErr" class="error hidden"></div>
   </div>
 
@@ -480,6 +487,28 @@ const SAMPLES = {
  }
 };
 
+/* Продукт віддає тексти українською, тож англійські формулювання складаються
+   тут — і по КОДУ відмови, а не по рядку з сервера. Незнайомий код показуємо
+   як є: мовчазне «щось пішло не так» приховало б справжню причину. */
+const ERROR_TEXT = {
+  invalid_email: "That email looks like a typo — check the address.",
+  disposable_email: "Disposable inboxes are not supported. Use a work email and the demo opens right away.",
+  ip_quota: "This network has opened the demo several times today. Write to " + CONTACT + " and we will open access manually.",
+  no_signup: "Enter your email first — we will send a code.",
+  too_many_attempts: "Too many attempts. Request a new code.",
+  code_expired: "That code has expired. Request a new one — it takes a second.",
+  code_mismatch: "That code does not match. Check the email and try again.",
+  resend_too_soon: "The code is already on its way. You can request another in a minute.",
+  already_verified: "This email is already verified.",
+  send_failed: "We could not send the email. Try again in a minute or write to " + CONTACT + ".",
+};
+
+function refusal(body, fallback){
+  const d = body && body.detail;
+  if(d && typeof d === "object") return ERROR_TEXT[d.code] || d.message || fallback;
+  return d || fallback;
+}
+
 const FLAG_TEXT = {
   fresh_wallet: "Fresh wallet — short history, very few transactions",
   mixer_funding: "Initial funding came from a mixer",
@@ -512,6 +541,22 @@ if(typeof document !== "undefined"){
     if(checksLeft !== null) badge.textContent = checksLeft + " free checks left";
   }
 
+  let pendingEmail = "";
+
+  function gateError(message){
+    $("gateErr").textContent = message;
+    $("gateErr").classList.remove("hidden");
+  }
+
+  function keyReceived(body){
+    apiKey = body.api_key;
+    checksLeft = body.checks_left;
+    localStorage.setItem(STORAGE_KEY, apiKey);
+    $("codeRow").classList.add("hidden");
+    $("codeNote").classList.add("hidden");
+    paintGate();
+  }
+
   async function signup(){
     const email = $("email").value.trim();
     if(!email) return;
@@ -523,16 +568,59 @@ if(typeof document !== "undefined"){
         body: JSON.stringify({email, company: $("company").value.trim() || null}),
       });
       const body = await r.json();
-      if(!r.ok) throw new Error(body.detail || "Sign-up failed");
-      apiKey = body.api_key;
-      checksLeft = body.checks_left;
-      localStorage.setItem(STORAGE_KEY, apiKey);
-      paintGate();
+      if(!r.ok) throw new Error(refusal(body, "Sign-up failed"));
+
+      /* Пошта підтверджується кодом. Якщо сервер каже, що підтвердження не
+         потрібне (пошта вже підтверджена або SMTP ще не налаштований), він
+         одразу віддає ключ — сторінка не вирішує це сама. */
+      if(!body.verification_required){ keyReceived(body); return; }
+
+      pendingEmail = email;
+      $("emailRow").classList.add("hidden");
+      $("codeRow").classList.remove("hidden");
+      $("codeNote").textContent = "We sent a 6-digit code to " + email +
+        ". It expires in 15 minutes — check spam if it is not there in a minute.";
+      $("codeNote").classList.remove("hidden");
+      $("code").focus();
     }catch(e){
-      $("gateErr").textContent = e.message;
-      $("gateErr").classList.remove("hidden");
+      gateError(e.message);
     }finally{
       $("signup").disabled = false;
+    }
+  }
+
+  async function verify(){
+    const code = $("code").value.trim();
+    if(!code) return;
+    $("verify").disabled = true;
+    $("gateErr").classList.add("hidden");
+    try{
+      const r = await fetch(API + "/v1/demo/verify", {
+        method: "POST", headers: {"content-type": "application/json"},
+        body: JSON.stringify({email: pendingEmail, code}),
+      });
+      const body = await r.json();
+      if(!r.ok) throw new Error(refusal(body, "Wrong code"));
+      keyReceived(body);
+    }catch(e){
+      gateError(e.message);
+    }finally{
+      $("verify").disabled = false;
+    }
+  }
+
+  async function resend(){
+    $("gateErr").classList.add("hidden");
+    try{
+      const r = await fetch(API + "/v1/demo/resend", {
+        method: "POST", headers: {"content-type": "application/json"},
+        body: JSON.stringify({email: pendingEmail}),
+      });
+      const body = await r.json();
+      if(!r.ok) throw new Error(refusal(body, "Could not send"));
+      $("codeNote").textContent = "A new code is on its way to " + pendingEmail + ".";
+    }catch(e){
+      gateError(e.message);
     }
   }
 
@@ -573,7 +661,7 @@ if(typeof document !== "undefined"){
         localStorage.removeItem(STORAGE_KEY); apiKey = ""; checksLeft = null; paintGate();
         throw new Error("The demo key is no longer valid — open the demo again.");
       }
-      if(!r.ok) throw new Error(body.detail || ("HTTP " + r.status));
+      if(!r.ok) throw new Error(refusal(body, "HTTP " + r.status));
 
       checksLeft = body.checks_left;
       paintGate();
@@ -664,6 +752,9 @@ if(typeof document !== "undefined"){
 
   $("signup").addEventListener("click", signup);
   $("email").addEventListener("keydown", e => { if(e.key === "Enter") signup(); });
+  $("verify").addEventListener("click", verify);
+  $("code").addEventListener("keydown", e => { if(e.key === "Enter") verify(); });
+  $("resend").addEventListener("click", resend);
   $("go").addEventListener("click", run);
   $("addr").addEventListener("keydown", e => { if(e.key === "Enter") run(); });
   document.querySelectorAll("[data-sample]").forEach(a =>
