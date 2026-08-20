@@ -30,7 +30,10 @@
   button:disabled{opacity:.5;cursor:wait}
   .demos{color:var(--muted);font-size:13px;margin-bottom:30px}
   .demos a{color:var(--accent2);cursor:pointer;text-decoration:none;margin-right:10px}
-  .hidden{display:none}
+  /* !important, бо .demo-badge і .checks задають свій display і йдуть нижче:
+     без цього значок SAMPLE лишався б на живому вердикті — тобто рівно
+     там, де ми доводимо, що це не намальовані дані. */
+  .hidden{display:none !important}
   .error{background:#2a1520;border:1px solid var(--red);border-radius:12px;padding:14px 18px;color:var(--red);margin-bottom:20px}
   .progress{color:var(--accent2);font-size:13px;margin-bottom:20px}
   .demo-badge{display:inline-block;background:#2a2410;color:var(--yellow);font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;margin-left:10px;vertical-align:middle}
@@ -68,6 +71,18 @@
   .link-src{font-size:11px;color:var(--muted)}
   .full{grid-column:1 / -1}
   .footer{color:var(--muted);font-size:12px;margin-top:30px;line-height:1.6}
+  .gate{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px 20px;margin-bottom:14px}
+  .gate-head{font-weight:700;font-size:15px;margin-bottom:6px}
+  .gate-note{color:var(--muted);font-size:13px;margin:0 0 12px;line-height:1.5}
+  .gate-row{display:flex;gap:8px;flex-wrap:wrap}
+  .gate-row input{flex:1 1 200px;background:var(--card2);border:1px solid var(--border);border-radius:10px;
+    color:var(--text);padding:11px 13px;font-size:14px}
+  .gate-row button{background:var(--grad);border:0;border-radius:10px;color:#fff;font-weight:700;
+    padding:11px 20px;font-size:14px;cursor:pointer}
+  .checks{background:var(--card2);border:1px solid var(--border);border-radius:12px;
+    padding:3px 10px;font-size:11px;margin-right:10px}
+  .cov-line{font-size:13px;color:var(--muted);line-height:1.7}
+  .cov-line b{color:var(--text)}
   @media(max-width:700px){.grid{grid-template-columns:1fr}.metrics{grid-template-columns:repeat(2,1fr)}}
 </style>
 </head>
@@ -79,11 +94,28 @@
   </div>
   <div class="tagline">Player-level verdict in seconds — VIP, risk, gambling footprint. One wallet or the player's whole entity.</div>
 
+  <div id="gate" class="gate hidden">
+    <div class="gate-head">Check your own players — 10 free verdicts</div>
+    <p class="gate-note">Same engine our clients call in production: same scoring, same label
+    database. Leave a work email and the demo opens right here.</p>
+    <div class="gate-row">
+      <input id="email" type="email" placeholder="you@casino.com" spellcheck="false">
+      <input id="company" placeholder="Casino (optional)" spellcheck="false">
+      <button id="signup">Open the demo</button>
+    </div>
+    <div id="gateErr" class="error hidden"></div>
+  </div>
+
   <div class="searchbar">
-    <input id="addr" placeholder="Player's TRON address — or several, comma-separated (T..., T...)" spellcheck="false">
+    <input id="addr" placeholder="Player wallet — TRON, Ethereum or BNB Chain" spellcheck="false">
     <button id="go">Get verdict</button>
   </div>
-  <div class="demos">Demo: <a data-demo="demo:whale">whale</a> <a data-demo="demo:hunter">bonus hunter</a> <a data-demo="demo:regular">regular player</a> <a data-demo="demo:entity">multi-chain player entity</a></div>
+  <div class="demos">
+    <span id="checksLeft" class="checks hidden"></span>
+    Samples (no check spent): <a data-sample="sample:whale">whale</a>
+    <a data-sample="sample:hunter">bonus hunter</a>
+    <a data-sample="sample:regular">regular player</a>
+  </div>
 
   <div id="progress" class="progress hidden"></div>
   <div id="err" class="error hidden"></div>
@@ -122,412 +154,523 @@
       <div class="card"><h3>Top counterparties</h3>
         <table class="cp-table"><thead><tr><th>Address / label</th><th>In</th><th>Out</th></tr></thead><tbody id="cps"></tbody></table>
       </div>
+
+      <div class="card full"><h3>What this verdict is built on</h3><div id="coverage"></div></div>
     </div>
   </div>
 
   <div class="footer">
-    Prototype. Analyzes the last ~1,000 USDT transfers via the public TronGrid API — data never leaves your browser.<br>
-    Footprint accuracy depends on the casino address label database and improves as it grows.
+    Verdicts come from the live PlayerLens API — the same profiler, scoring and label database
+    our clients call in production. Nothing is recomputed in the browser.<br>
+    Footprint accuracy depends on the casino label database and improves as it grows; every
+    verdict states which chains and assets it was built on.
   </div>
 </div>
 
 <script>
-/* ============ CONFIG / LABELS ============ */
-const USDT = "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t";
-const MAX_PAGES = 5;
-// Seed Labels DB — add real casino addresses here (see README)
-const LABELS = {
-  [USDT]: { name: "USDT (TRC-20) Contract", type: "contract" },
+/* ============================================================================
+   Демо звертається до продукту, а не рахує саме.
+
+   Тут навмисно НЕМАЄ ні скорингу, ні порогів, ні Labels DB. Попередня версія
+   цієї сторінки мала все це власною копією в JavaScript — і копія розійшлася
+   з продуктом: пороги лишились старими, coverage і походження коштів не
+   зʼявились узагалі, а Labels DB складалася з однієї мітки, тож футпринт на
+   реальній адресі був порожній завжди. Демо мовчало саме про те, заради чого
+   продукт купують.
+
+   Єдине, що ця сторінка робить із вердиктом, — показує його. Англійські
+   формулювання прапорців і підсумку складаються тут, бо продукт віддає їх
+   українською, але і коди прапорців, і числа, і рішення приходять з API.
+   ========================================================================= */
+/* ?api=http://localhost:8000 — щоб ганяти сторінку проти локального продукту
+   під час розробки. У чужому браузері це нічого не відкриває: ключ демо і так
+   лежить у цьому ж браузері, а сервер приймає лише свої домени. */
+const API = new URLSearchParams(location.search).get("api") || "https://app.88-99-172-144.sslip.io";
+const STORAGE_KEY = "playerlens_demo_key";
+const CONTACT = "hello@playerlens.io";
+
+/* Зразки — не «намальовані»: це відповідь справжнього скорингу продукту на
+   синтетичних профілях. Показуються без витрати перевірки. */
+const SAMPLES = {
+ "sample:whale": {
+  "address": "TWhaleSampleXXXXXXXXXXXXXXXXXXXXXX",
+  "chain": "tron",
+  "verdict": {
+   "vip_score": 100,
+   "risk_level": "low",
+   "risk_flags": [
+    {
+     "flag": "cex_linked",
+     "text": "Є потік із CEX — гаманець пов'язаний із KYC-біржею",
+     "positive": true
+    }
+   ],
+   "archetype": "whale",
+   "casino_footprint": [
+    {
+     "name": "Stake.com",
+     "deposits_usd": 96000.0,
+     "payouts_usd": 188000.0,
+     "net_result_usd": -92000.0,
+     "share_pct": 69.1
+    },
+    {
+     "name": "Roobet",
+     "deposits_usd": 31000.0,
+     "payouts_usd": 92000.0,
+     "net_result_usd": -61000.0,
+     "share_pct": 22.3
+    },
+    {
+     "name": "BC.Game",
+     "deposits_usd": 12000.0,
+     "payouts_usd": 46500.0,
+     "net_result_usd": -34500.0,
+     "share_pct": 8.6
+    }
+   ],
+   "funding_origin": null,
+   "merchants": [],
+   "coverage": {
+    "chains": {
+     "tron": [
+      "USDT",
+      "TRX"
+     ]
+    },
+    "not_covered_chains": [
+     "Polygon",
+     "Arbitrum",
+     "Base",
+     "Optimism",
+     "Avalanche",
+     "Bitcoin"
+    ],
+    "note": "Висновок побудовано лише за переліченими мережами й монетами. Перекази в інших активах або мережах у нього не входять."
+   },
+   "unmatched_gambling_flow_pct": 12.0,
+   "defi_flow_usd": 0.0,
+   "summary": "Гаманцю 812 дн., оборот $1,284,300 in / $1,102,850 out, баланс $342,500. Грає у 3 розмічених казино, найбільше — Stake.com (69% гемблінг-флоу). Рекомендація: передати VIP-менеджеру негайно."
+  },
+  "metrics": {
+   "total_in_usd": 1284300.0,
+   "total_out_usd": 1102850.0,
+   "balance_usd": 342500.0,
+   "avg_in_usd": 4830.0,
+   "wallet_age_days": 812.0,
+   "transfers_analyzed": 964
+  },
+  "counterparties": [
+   {
+    "address": "TStakeSampleXXXXXXXXXXXXXXXXXXXXX",
+    "name": "Stake.com",
+    "type": "casino",
+    "in_usd": 188000,
+    "out_usd": 96000
+   },
+   {
+    "address": "TRoobetSampleXXXXXXXXXXXXXXXXXXXX",
+    "name": "Roobet",
+    "type": "casino",
+    "in_usd": 92000,
+    "out_usd": 31000
+   },
+   {
+    "address": "TBCGameSampleXXXXXXXXXXXXXXXXXXXX",
+    "name": "BC.Game",
+    "type": "casino",
+    "in_usd": 46500,
+    "out_usd": 12000
+   },
+   {
+    "address": "TBinanceHotSampleXXXXXXXXXXXXXXXX",
+    "name": "Binance",
+    "type": "exchange",
+    "in_usd": 145000,
+    "out_usd": 610000
+   }
+  ],
+  "sample": true
+ },
+ "sample:hunter": {
+  "address": "THunterSampleXXXXXXXXXXXXXXXXXXXX",
+  "chain": "tron",
+  "verdict": {
+   "vip_score": 37,
+   "risk_level": "high",
+   "risk_flags": [
+    {
+     "flag": "mixer_funding",
+     "text": "Первинне поповнення з міксера"
+    },
+    {
+     "flag": "pass_through",
+     "text": "Транзитний патерн: майже все вхідне одразу виходить"
+    },
+    {
+     "flag": "bonus_hunter",
+     "text": "Дрібні депозити в 4+ казино — патерн бонус-хантера"
+    }
+   ],
+   "archetype": "bonus_hunter",
+   "casino_footprint": [
+    {
+     "name": "Stake.com",
+     "deposits_usd": 400.0,
+     "payouts_usd": 900.0,
+     "net_result_usd": -500.0,
+     "share_pct": 34.5
+    },
+    {
+     "name": "Roobet",
+     "deposits_usd": 300.0,
+     "payouts_usd": 850.0,
+     "net_result_usd": -550.0,
+     "share_pct": 25.9
+    },
+    {
+     "name": "BC.Game",
+     "deposits_usd": 250.0,
+     "payouts_usd": 780.0,
+     "net_result_usd": -530.0,
+     "share_pct": 21.6
+    },
+    {
+     "name": "1win",
+     "deposits_usd": 210.0,
+     "payouts_usd": 640.0,
+     "net_result_usd": -430.0,
+     "share_pct": 18.1
+    }
+   ],
+   "funding_origin": null,
+   "merchants": [],
+   "coverage": {
+    "chains": {
+     "tron": [
+      "USDT",
+      "TRX"
+     ]
+    },
+    "not_covered_chains": [
+     "Polygon",
+     "Arbitrum",
+     "Base",
+     "Optimism",
+     "Avalanche",
+     "Bitcoin"
+    ],
+    "note": "Висновок побудовано лише за переліченими мережами й монетами. Перекази в інших активах або мережах у нього не входять."
+   },
+   "unmatched_gambling_flow_pct": 8.0,
+   "defi_flow_usd": 0.0,
+   "summary": "Гаманцю 24 дн., оборот $4,200 in / $4,050 out, баланс $150. Грає у 4 розмічених казино, найбільше — Stake.com (34% гемблінг-флоу). Рекомендація: притримати бонус до ручної перевірки."
+  },
+  "metrics": {
+   "total_in_usd": 4200.0,
+   "total_out_usd": 4050.0,
+   "balance_usd": 150.0,
+   "avg_in_usd": 48.0,
+   "wallet_age_days": 24.0,
+   "transfers_analyzed": 88
+  },
+  "counterparties": [
+   {
+    "address": "TStakeSampleXXXXXXXXXXXXXXXXXXXXX",
+    "name": "Stake.com",
+    "type": "casino",
+    "in_usd": 900,
+    "out_usd": 400
+   },
+   {
+    "address": "TRoobetSampleXXXXXXXXXXXXXXXXXXXX",
+    "name": "Roobet",
+    "type": "casino",
+    "in_usd": 850,
+    "out_usd": 300
+   },
+   {
+    "address": "TBCGameSampleXXXXXXXXXXXXXXXXXXXX",
+    "name": "BC.Game",
+    "type": "casino",
+    "in_usd": 780,
+    "out_usd": 250
+   },
+   {
+    "address": "T1winSampleXXXXXXXXXXXXXXXXXXXXXX",
+    "name": "1win",
+    "type": "casino",
+    "in_usd": 640,
+    "out_usd": 210
+   }
+  ],
+  "sample": true
+ },
+ "sample:regular": {
+  "address": "TRegularSampleXXXXXXXXXXXXXXXXXXX",
+  "chain": "tron",
+  "verdict": {
+   "vip_score": 64,
+   "risk_level": "low",
+   "risk_flags": [
+    {
+     "flag": "cex_linked",
+     "text": "Є потік із CEX — гаманець пов'язаний із KYC-біржею",
+     "positive": true
+    }
+   ],
+   "archetype": "promising",
+   "casino_footprint": [
+    {
+     "name": "Stake.com",
+     "deposits_usd": 7100.0,
+     "payouts_usd": 9800.0,
+     "net_result_usd": -2700.0,
+     "share_pct": 100.0
+    }
+   ],
+   "funding_origin": null,
+   "merchants": [],
+   "coverage": {
+    "chains": {
+     "tron": [
+      "USDT",
+      "TRX"
+     ]
+    },
+    "not_covered_chains": [
+     "Polygon",
+     "Arbitrum",
+     "Base",
+     "Optimism",
+     "Avalanche",
+     "Bitcoin"
+    ],
+    "note": "Висновок побудовано лише за переліченими мережами й монетами. Перекази в інших активах або мережах у нього не входять."
+   },
+   "unmatched_gambling_flow_pct": 22.0,
+   "defi_flow_usd": 0.0,
+   "summary": "Гаманцю 260 дн., оборот $42,000 in / $36,500 out, баланс $2,400. Грає у 1 розмічених казино, найбільше — Stake.com (100% гемблінг-флоу). Рекомендація: стандартний онбординг."
+  },
+  "metrics": {
+   "total_in_usd": 42000.0,
+   "total_out_usd": 36500.0,
+   "balance_usd": 2400.0,
+   "avg_in_usd": 320.0,
+   "wallet_age_days": 260.0,
+   "transfers_analyzed": 190
+  },
+  "counterparties": [
+   {
+    "address": "TStakeSampleXXXXXXXXXXXXXXXXXXXXX",
+    "name": "Stake.com",
+    "type": "casino",
+    "in_usd": 9800,
+    "out_usd": 7100
+   },
+   {
+    "address": "TBinanceHotSampleXXXXXXXXXXXXXXXX",
+    "name": "Binance",
+    "type": "exchange",
+    "in_usd": 12000,
+    "out_usd": 18000
+   }
+  ],
+  "sample": true
+ }
 };
 
-/* ============ PROFILER (client-side) ============ */
-async function getJSON(url){
-  const r = await fetch(url, {headers:{accept:"application/json"}});
-  if(!r.ok) throw new Error("HTTP " + r.status + " from " + new URL(url).host);
-  return r.json();
-}
-
-async function fetchTransfers(address, onProgress){
-  let out = [], fingerprint = null;
-  for(let i = 0; i < MAX_PAGES; i++){
-    onProgress && onProgress(`Loading transfers… page ${i+1}/${MAX_PAGES}`);
-    let url = `https://api.trongrid.io/v1/accounts/${address}/transactions/trc20?limit=200&contract_address=${USDT}`;
-    if(fingerprint) url += `&fingerprint=${encodeURIComponent(fingerprint)}`;
-    const body = await getJSON(url);
-    for(const t of (body.data || [])){
-      try{
-        const dec = parseInt(t.token_info?.decimals ?? 6);
-        out.push({ts: t.block_timestamp, frm: t.from, to: t.to, amount: Number(t.value) / 10**dec});
-      }catch(e){/* skip */}
-    }
-    fingerprint = body.meta?.fingerprint;
-    if(!fingerprint) break;
-    await new Promise(res => setTimeout(res, 300));
-  }
-  return out;
-}
-
-async function fetchTag(address){
-  try{
-    const body = await getJSON(`https://apilist.tronscanapi.com/api/accountv2?address=${address}`);
-    const tag = (body.publicTag || "").trim();
-    return tag || null;
-  }catch(e){ return null; }
-}
-
-function classifyTag(tag){
-  const low = tag.toLowerCase();
-  if(["casino","stake","bet","gamb","roobet","rollbit","bc.game","duel"].some(k => low.includes(k))) return "casino";
-  if(["binance","okx","bybit","huobi","htx","kucoin","gate","mexc","kraken","bitget","exchange"].some(k => low.includes(k))) return "exchange";
-  return null;
-}
-
-async function buildProfile(address, onProgress){
-  onProgress && onProgress("Fetching account…");
-  const accBody = await getJSON(`https://api.trongrid.io/v1/accounts/${address}`);
-  const acc = (accBody.data || [])[0];
-  const now = Date.now();
-  const p = {
-    address, exists: true, wallet_age_days: 0, days_since_last_activity: 0,
-    trx_balance: 0, usdt_balance: 0, transfers_analyzed: 0,
-    total_in_usdt: 0, total_out_usdt: 0, avg_in_usdt: 0, max_in_usdt: 0,
-    funding_source: {}, counterparties: [], casino_flows: [], exchange_flow_usdt: 0, error: null,
-  };
-  if(!acc){ p.exists = false; p.error = "Address not found on-chain (no activity)"; return p; }
-
-  p.trx_balance = (acc.balance || 0) / 1e6;
-  for(const tok of (acc.trc20 || [])) if(tok[USDT]) p.usdt_balance = Number(tok[USDT]) / 1e6;
-  const create = acc.create_time || now, lastOp = acc.latest_opration_time || create;
-  p.wallet_age_days = +((now - create) / 864e5).toFixed(1);
-  p.days_since_last_activity = +((now - lastOp) / 864e5).toFixed(1);
-
-  const transfers = await fetchTransfers(address, onProgress);
-  p.transfers_analyzed = transfers.length;
-
-  const flows = {}, incoming = [];
-  for(const t of transfers){
-    let cp;
-    if(t.to === address){
-      p.total_in_usdt += t.amount; p.max_in_usdt = Math.max(p.max_in_usdt, t.amount);
-      incoming.push(t); cp = t.frm;
-      (flows[cp] ??= {in:0,out:0,count:0}).in += t.amount;
-    } else if(t.frm === address){
-      p.total_out_usdt += t.amount; cp = t.to;
-      (flows[cp] ??= {in:0,out:0,count:0}).out += t.amount;
-    } else continue;
-    flows[cp].count++;
-  }
-
-  if(incoming.length){
-    p.avg_in_usdt = +(p.total_in_usdt / incoming.length).toFixed(2);
-    const first = incoming.reduce((a,b) => a.ts < b.ts ? a : b);
-    const lbl = LABELS[first.frm] || {};
-    p.funding_source = {address: first.frm, amount: +first.amount.toFixed(2), label: lbl.name || null, type: lbl.type || null};
-  }
-
-  const top = Object.entries(flows).sort((a,b) => (b[1].in + b[1].out) - (a[1].in + a[1].out)).slice(0, 12);
-  onProgress && onProgress("Enriching counterparties with labels…");
-  for(const [addr, f] of top){
-    const info = LABELS[addr] || {};
-    let name = info.name || null, typ = info.type || null;
-    if(!name){
-      const tag = await fetchTag(addr);
-      if(tag){ name = tag; typ = classifyTag(tag); }
-    }
-    const entry = {address: addr, name, type: typ, in_usdt: +f.in.toFixed(2), out_usdt: +f.out.toFixed(2), tx_count: f.count};
-    p.counterparties.push(entry);
-    if(typ === "casino") p.casino_flows.push(entry);
-    else if(typ === "exchange") p.exchange_flow_usdt += f.in + f.out;
-  }
-  p.total_in_usdt = +p.total_in_usdt.toFixed(2);
-  p.total_out_usdt = +p.total_out_usdt.toFixed(2);
-  p.exchange_flow_usdt = +p.exchange_flow_usdt.toFixed(2);
-  return p;
-}
-
-/* ============ SCORING ============ */
-function volumeScore(x){ return x <= 0 ? 0 : Math.min(40, 8 * Math.log10(x / 10)); }
-function balanceScore(x){ return x <= 0 ? 0 : Math.min(25, 6 * Math.log10(x)); }
-function ticketScore(avg, max){
-  let s = 0;
-  if(avg >= 100) s += 5; if(avg >= 500) s += 4; if(avg >= 2000) s += 4;
-  if(max >= 5000) s += 4; if(max >= 25000) s += 3;
-  return s;
-}
-function maturityScore(age, txs){
-  let s = 0;
-  if(age >= 30) s += 3; if(age >= 180) s += 4; if(age >= 720) s += 3;
-  if(txs >= 50) s += 3; if(txs >= 300) s += 2;
-  return s;
-}
-
-function computeVerdict(p){
-  if(!p.exists){
-    return {vip_score: 0, risk_level: "high",
-      risk_flags: [{flag: "not_found", text: "No on-chain activity — likely a freshly created wallet"}],
-      archetype: "Unknown", casino_footprint: [],
-      summary: "Wallet not found on-chain. First deposit from an address like this — maximum caution with bonuses."};
-  }
-  const age = p.wallet_age_days, txs = p.transfers_analyzed;
-  const vip = Math.round(Math.min(100,
-    volumeScore(p.total_in_usdt) + balanceScore(p.usdt_balance) +
-    ticketScore(p.avg_in_usdt, p.max_in_usdt) + maturityScore(age, txs)));
-
-  const flags = [];
-  if(age < 7 && txs <= 3) flags.push({flag:"fresh_wallet", text:`Fresh wallet (${Math.round(age)} days old, ${txs} transactions)`});
-  if((p.funding_source||{}).type === "mixer") flags.push({flag:"mixer_funding", text:"Initially funded from a mixer"});
-  if(p.total_in_usdt > 0 && p.total_out_usdt / Math.max(p.total_in_usdt, 1) > 0.92 && age < 30)
-    flags.push({flag:"pass_through", text:"Pass-through pattern: almost everything incoming leaves immediately"});
-  const nCas = (p.casino_flows||[]).length;
-  if(nCas >= 3 && p.avg_in_usdt < 150)
-    flags.push({flag:"bonus_hunter", text:`Small deposits across ${nCas}+ casinos — bonus hunter pattern`});
-  if(p.exchange_flow_usdt > 0)
-    flags.push({flag:"cex_linked", text:"CEX flow detected — wallet linked to a KYC exchange (positive signal)", positive:true});
-
-  const neg = flags.filter(f => !f.positive);
-  const risk = neg.length >= 2 ? "high" : (neg.length ? "medium" : "low");
-
-  let archetype;
-  if(vip >= 70) archetype = "Whale";
-  else if(vip >= 45) archetype = "Promising player";
-  else if(flags.some(f => f.flag === "bonus_hunter")) archetype = "Likely bonus hunter";
-  else if(age < 7) archetype = "New wallet";
-  else archetype = "Regular player";
-
-  const casTotal = (p.casino_flows||[]).reduce((s,c) => s + c.in_usdt + c.out_usdt, 0);
-  const footprint = (p.casino_flows||[]).map(c => ({
-    name: c.name || c.address.slice(0,10) + "…",
-    flow_usdt: +(c.in_usdt + c.out_usdt).toFixed(2),
-    share_pct: casTotal ? +((100 * (c.in_usdt + c.out_usdt)) / casTotal).toFixed(1) : 0,
-  })).sort((a,b) => b.flow_usdt - a.flow_usdt);
-
-  const usd0 = n => "$" + Math.round(n).toLocaleString("en-US");
-  const bits = [`Wallet is ${Math.round(age)} days old, volume ${usd0(p.total_in_usdt)} in / ${usd0(p.total_out_usdt)} out, balance ${usd0(p.usdt_balance)} USDT.`];
-  if(nCas) bits.push(`Plays at ${nCas} labeled casino${nCas > 1 ? "s" : ""}, mostly ${footprint[0].name} (${Math.round(footprint[0].share_pct)}% of gambling flow).`);
-  if(vip >= 70) bits.push("Recommendation: hand off to a VIP manager immediately.");
-  else if(flags.some(f => f.flag === "bonus_hunter")) bits.push("Recommendation: hold the bonus until manual review.");
-  else if(risk === "high") bits.push("Recommendation: be careful with the welcome offer.");
-  else bits.push("Recommendation: standard onboarding.");
-
-  return {vip_score: vip, risk_level: risk, risk_flags: flags, archetype, casino_footprint: footprint, summary: bits.join(" ")};
-}
-
-/* ============ DEMO DATA ============ */
-const DEMO = {
-  "demo:whale": {
-    address:"TWhaleDemo", exists:true, wallet_age_days:812.4, days_since_last_activity:0.3,
-    trx_balance:4210, usdt_balance:342500, transfers_analyzed:964,
-    total_in_usdt:1284300, total_out_usdt:1102850, avg_in_usdt:4830, max_in_usdt:85000,
-    funding_source:{address:"TBinanceHot", amount:25000, label:"Binance (hot)", type:"exchange"},
-    counterparties:[
-      {address:"TStakeDemoXXXXXXXXXXXXXXXXXXXXXXX", name:"Stake.com", type:"casino", in_usdt:96000, out_usdt:188000, tx_count:214},
-      {address:"TRoobetDemoXXXXXXXXXXXXXXXXXXXXXX", name:"Roobet", type:"casino", in_usdt:31000, out_usdt:92000, tx_count:88},
-      {address:"TBCGameDemoXXXXXXXXXXXXXXXXXXXXXX", name:"BC.Game", type:"casino", in_usdt:12000, out_usdt:46500, tx_count:41},
-      {address:"TBinanceHotDemoXXXXXXXXXXXXXXXXXX", name:"Binance (hot)", type:"exchange", in_usdt:610000, out_usdt:145000, tx_count:96},
-    ],
-    casino_flows:[
-      {address:"TStakeDemo", name:"Stake.com", type:"casino", in_usdt:96000, out_usdt:188000, tx_count:214},
-      {address:"TRoobetDemo", name:"Roobet", type:"casino", in_usdt:31000, out_usdt:92000, tx_count:88},
-      {address:"TBCGameDemo", name:"BC.Game", type:"casino", in_usdt:12000, out_usdt:46500, tx_count:41},
-    ],
-    exchange_flow_usdt:755000, error:null,
-  },
-  "demo:hunter": {
-    address:"THunterDemo", exists:true, wallet_age_days:19.2, days_since_last_activity:1.1,
-    trx_balance:12, usdt_balance:84, transfers_analyzed:57,
-    total_in_usdt:3240, total_out_usdt:3105, avg_in_usdt:92, max_in_usdt:400,
-    funding_source:{address:"TUnknown", amount:120, label:null, type:null},
-    counterparties:[
-      {address:"TCasinoA1", name:"BC.Game", type:"casino", in_usdt:310, out_usdt:640, tx_count:12},
-      {address:"TCasinoB2", name:"Vave", type:"casino", in_usdt:280, out_usdt:590, tx_count:10},
-      {address:"TCasinoC3", name:"Roobet", type:"casino", in_usdt:240, out_usdt:505, tx_count:9},
-      {address:"TCasinoD4", name:"Duelbits", type:"casino", in_usdt:195, out_usdt:430, tx_count:8},
-    ],
-    casino_flows:[
-      {address:"TCasinoA1", name:"BC.Game", type:"casino", in_usdt:310, out_usdt:640, tx_count:12},
-      {address:"TCasinoB2", name:"Vave", type:"casino", in_usdt:280, out_usdt:590, tx_count:10},
-      {address:"TCasinoC3", name:"Roobet", type:"casino", in_usdt:240, out_usdt:505, tx_count:9},
-      {address:"TCasinoD4", name:"Duelbits", type:"casino", in_usdt:195, out_usdt:430, tx_count:8},
-    ],
-    exchange_flow_usdt:0, error:null,
-  },
-  "demo:regular": {
-    address:"TRegularDemo", exists:true, wallet_age_days:231, days_since_last_activity:4,
-    trx_balance:260, usdt_balance:1150, transfers_analyzed:84,
-    total_in_usdt:9400, total_out_usdt:8100, avg_in_usdt:215, max_in_usdt:1200,
-    funding_source:{address:"TOKXHot", amount:500, label:"OKX (hot)", type:"exchange"},
-    counterparties:[
-      {address:"TCasinoX9", name:"Stake.com", type:"casino", in_usdt:1900, out_usdt:3400, tx_count:44},
-      {address:"TOKXHotDemoXXXXXXXXXXXXXXXXXXXXXX", name:"OKX (hot)", type:"exchange", in_usdt:6100, out_usdt:2300, tx_count:21},
-    ],
-    casino_flows:[
-      {address:"TCasinoX9", name:"Stake.com", type:"casino", in_usdt:1900, out_usdt:3400, tx_count:44},
-    ],
-    exchange_flow_usdt:8400, error:null,
-  },
+const FLAG_TEXT = {
+  fresh_wallet: "Fresh wallet — short history, very few transactions",
+  mixer_funding: "Initial funding came from a mixer",
+  mixer_funding_indirect: "Mixer funds through an intermediate address — indirect link",
+  pass_through: "Pass-through pattern: almost everything received leaves immediately",
+  bonus_hunter: "Small deposits across several casinos — bonus-hunter pattern",
+  cex_linked: "Linked to a KYC exchange",
+  not_found: "No on-chain activity — most likely a brand-new wallet",
+  unattributable_source: "Address belongs to an exchange cluster — a player profile cannot be built",
 };
 
-/* Multi-chain player entity demo: same player, three wallets on three chains.
-   Alone, the TRON wallet looks like a regular player — merged, he's a whale. */
-DEMO["demo:entity"] = {
-  address:"Player #4821 (3 linked wallets)", exists:true,
-  wallet_age_days:684, days_since_last_activity:0.4,
-  trx_balance:260, usdt_balance:229150, transfers_analyzed:1418,
-  total_in_usdt:616400, total_out_usdt:531200, avg_in_usdt:3390, max_in_usdt:60000,
-  funding_source:{address:"0xBinance7", amount:40000, label:"Binance (hot)", type:"exchange"},
-  wallets:[
-    {address:"TRegularDemoAddressXXXXXXXXXXXXXXX", chain:"tron", in_usdt:9400, balance:1150, src:"casino-provided"},
-    {address:"0x8f31c2…e2a1", chain:"eth", in_usdt:511000, balance:187000, src:"casino-provided"},
-    {address:"bc1qxy2k…0wlh", chain:"btc", in_usdt:96000, balance:41000, src:"suspected · same CEX deposit addr · 0.87"},
-  ],
-  counterparties:[
-    {address:"0xStakeEthHotXXXXXXXXXXXXXXXXXXXX", name:"Stake.com (ETH)", type:"casino", in_usdt:88000, out_usdt:214000, tx_count:301},
-    {address:"TCasinoX9", name:"Stake.com (TRON)", type:"casino", in_usdt:1900, out_usdt:3400, tx_count:44},
-    {address:"bc1RollbitHotXXXXXXXXXXXXXXXXXXXX", name:"Rollbit (BTC)", type:"casino", in_usdt:21000, out_usdt:64000, tx_count:57},
-    {address:"0xBinance7XXXXXXXXXXXXXXXXXXXXXXXX", name:"Binance (hot)", type:"exchange", in_usdt:390000, out_usdt:120000, tx_count:112},
-  ],
-  casino_flows:[
-    {address:"0xStakeEthHot", name:"Stake.com (ETH)", type:"casino", in_usdt:88000, out_usdt:214000, tx_count:301},
-    {address:"bc1RollbitHot", name:"Rollbit (BTC)", type:"casino", in_usdt:21000, out_usdt:64000, tx_count:57},
-    {address:"TCasinoX9", name:"Stake.com (TRON)", type:"casino", in_usdt:1900, out_usdt:3400, tx_count:44},
-  ],
-  exchange_flow_usdt:510000, error:null,
-};
-
-/* ============ ENTITY MERGE ============ */
-function mergeProfiles(profiles){
-  const m = {
-    address: `Entity (${profiles.length} wallets)`, exists: profiles.some(p => p.exists),
-    wallet_age_days: Math.max(...profiles.map(p => p.wallet_age_days)),
-    days_since_last_activity: Math.min(...profiles.map(p => p.days_since_last_activity)),
-    trx_balance: 0, usdt_balance: 0, transfers_analyzed: 0,
-    total_in_usdt: 0, total_out_usdt: 0, avg_in_usdt: 0, max_in_usdt: 0,
-    funding_source: {}, counterparties: [], casino_flows: [], exchange_flow_usdt: 0, error: null,
-    wallets: [],
-  };
-  const cps = {};
-  let inCount = 0;
-  for(const p of profiles){
-    m.trx_balance += p.trx_balance; m.usdt_balance += p.usdt_balance;
-    m.transfers_analyzed += p.transfers_analyzed;
-    m.total_in_usdt += p.total_in_usdt; m.total_out_usdt += p.total_out_usdt;
-    m.max_in_usdt = Math.max(m.max_in_usdt, p.max_in_usdt);
-    m.exchange_flow_usdt += p.exchange_flow_usdt;
-    if(p.avg_in_usdt > 0){ inCount += Math.round(p.total_in_usdt / p.avg_in_usdt); }
-    m.wallets.push({address: p.address, chain: "tron", in_usdt: p.total_in_usdt, balance: p.usdt_balance, src: "provided"});
-    for(const c of p.counterparties){
-      const key = c.address;
-      if(!cps[key]) cps[key] = {...c};
-      else { cps[key].in_usdt += c.in_usdt; cps[key].out_usdt += c.out_usdt; cps[key].tx_count += c.tx_count; }
-    }
-    // oldest wallet's funding source wins
-    if(!m.funding_source.address || p.wallet_age_days === m.wallet_age_days) m.funding_source = p.funding_source;
-  }
-  m.avg_in_usdt = inCount ? +(m.total_in_usdt / inCount).toFixed(2) : 0;
-  m.counterparties = Object.values(cps).sort((a,b) => (b.in_usdt + b.out_usdt) - (a.in_usdt + a.out_usdt)).slice(0, 12);
-  m.casino_flows = m.counterparties.filter(c => c.type === "casino");
-  m.total_in_usdt = +m.total_in_usdt.toFixed(2); m.total_out_usdt = +m.total_out_usdt.toFixed(2);
-  return m;
-}
-
-/* ============ UI ============ */
 if(typeof document !== "undefined"){
   const $ = id => document.getElementById(id);
-  const usd = n => "$" + Math.round(n).toLocaleString("en-US");
-  const TRON_RE = /^T[1-9A-HJ-NP-Za-km-z]{33}$/;
-  const cache = {};
+  const usd = n => "$" + Math.round(n || 0).toLocaleString("en-US");
+  const ADDRESS_RE = /^(T[1-9A-HJ-NP-Za-km-z]{33}|0x[0-9a-fA-F]{40})$/;
+  let apiKey = localStorage.getItem(STORAGE_KEY) || "";
+  let checksLeft = null;
+
+  /* ---------- реєстрація ---------- */
+
+  function paintGate(){
+    $("gate").classList.toggle("hidden", !!apiKey);
+    $("addr").disabled = !apiKey;
+    $("go").disabled = !apiKey;
+    $("addr").placeholder = apiKey
+      ? "Player wallet — TRON, Ethereum or BNB Chain"
+      : "Open the demo above to check your own wallets";
+    const badge = $("checksLeft");
+    badge.classList.toggle("hidden", checksLeft === null);
+    if(checksLeft !== null) badge.textContent = checksLeft + " free checks left";
+  }
+
+  async function signup(){
+    const email = $("email").value.trim();
+    if(!email) return;
+    $("signup").disabled = true;
+    $("gateErr").classList.add("hidden");
+    try{
+      const r = await fetch(API + "/v1/demo/signup", {
+        method: "POST", headers: {"content-type": "application/json"},
+        body: JSON.stringify({email, company: $("company").value.trim() || null}),
+      });
+      const body = await r.json();
+      if(!r.ok) throw new Error(body.detail || "Sign-up failed");
+      apiKey = body.api_key;
+      checksLeft = body.checks_left;
+      localStorage.setItem(STORAGE_KEY, apiKey);
+      paintGate();
+    }catch(e){
+      $("gateErr").textContent = e.message;
+      $("gateErr").classList.remove("hidden");
+    }finally{
+      $("signup").disabled = false;
+    }
+  }
+
+  /* ---------- перевірка адреси ---------- */
 
   async function run(){
-    const addr = $("addr").value.trim();
-    if(!addr) return;
+    const raw = $("addr").value.trim();
+    if(!raw) return;
     $("err").classList.add("hidden");
     $("go").disabled = true;
 
     try{
-      let profile, demo = false;
-      if(DEMO[addr]){ profile = DEMO[addr]; demo = true; }
-      else {
-        const addrs = [...new Set(addr.split(/[\s,;]+/).filter(Boolean))];
-        const bad = addrs.find(a => !TRON_RE.test(a));
-        if(bad) throw new Error(`Invalid TRON address: ${bad} (or use demo:whale / demo:hunter / demo:regular / demo:entity)`);
-        const key = addrs.slice().sort().join("|");
-        if(cache[key]) profile = cache[key];
-        else {
-          $("progress").classList.remove("hidden");
-          const profiles = [];
-          for(let i = 0; i < addrs.length; i++){
-            const pre = addrs.length > 1 ? `Wallet ${i+1}/${addrs.length}: ` : "";
-            profiles.push(await buildProfile(addrs[i], msg => $("progress").textContent = pre + msg));
-          }
-          profile = profiles.length === 1 ? profiles[0] : mergeProfiles(profiles);
-          cache[key] = profile;
-        }
+      if(SAMPLES[raw]) { render(SAMPLES[raw]); return; }
+
+      const addrs = [...new Set(raw.split(/[\s,;]+/).filter(Boolean))];
+      const bad = addrs.find(a => !ADDRESS_RE.test(a));
+      if(bad) throw new Error("Not a TRON / Ethereum / BNB address: " + bad);
+      if(addrs.length > 1){
+        throw new Error("The demo checks one wallet per verdict. Merging several wallets " +
+                        "into one player entity is part of the product — ask us for a walkthrough.");
       }
-      render(profile, computeVerdict(profile), demo);
+
+      $("progress").textContent = "Reading the chain and scoring the wallet…";
+      $("progress").classList.remove("hidden");
+
+      const r = await fetch(API + "/v1/demo/verdict", {
+        method: "POST",
+        headers: {"content-type": "application/json", "authorization": "Bearer " + apiKey},
+        body: JSON.stringify({address: addrs[0]}),
+      });
+      const body = await r.json();
+
+      if(r.status === 402){
+        checksLeft = 0; paintGate();
+        throw new Error(body.detail + " — write to " + CONTACT + " and we will open the full audit.");
+      }
+      if(r.status === 401 || r.status === 403){
+        localStorage.removeItem(STORAGE_KEY); apiKey = ""; checksLeft = null; paintGate();
+        throw new Error("The demo key is no longer valid — open the demo again.");
+      }
+      if(!r.ok) throw new Error(body.detail || ("HTTP " + r.status));
+
+      checksLeft = body.checks_left;
+      paintGate();
+      render(body);
     }catch(e){
       $("result").classList.add("hidden");
       $("err").textContent = e.message;
       $("err").classList.remove("hidden");
     }finally{
-      $("go").disabled = false;
+      $("go").disabled = !apiKey;
       $("progress").classList.add("hidden");
     }
   }
 
-  function render(p, v, demo){
-    $("result").classList.remove("hidden");
-    $("demoBadge").classList.toggle("hidden", !demo);
+  /* ---------- показ ---------- */
 
-    // linked wallets (player entity)
-    const ws = p.wallets || [];
-    $("walletsCard").classList.toggle("hidden", ws.length < 2);
-    if(ws.length >= 2){
-      $("wallets").innerHTML = ws.map(w => `
-        <tr><td><span class="mono">${w.address.length > 20 ? w.address.slice(0,18) + "…" : w.address}</span></td>
-        <td><span class="tag tag-${w.chain}">${w.chain.toUpperCase()}</span></td>
-        <td>${usd(w.in_usdt)}</td><td>${usd(w.balance)}</td>
-        <td class="link-src">${w.src}</td></tr>`).join("");
+  function summarize(v, m){
+    const bits = [];
+    bits.push(`Wallet age ${Math.round(m.wallet_age_days)} days, volume ${usd(m.total_in_usd)} in / ` +
+              `${usd(m.total_out_usd)} out, balance ${usd(m.balance_usd)}.`);
+    const fp = v.casino_footprint || [];
+    if(fp.length){
+      bits.push(`Plays at ${fp.length} labeled casino${fp.length > 1 ? "s" : ""}, mostly ` +
+                `${fp[0].name} (${Math.round(fp[0].share_pct)}% of gambling flow).`);
     }
+    const flags = v.risk_flags || [];
+    if(v.archetype === "whale") bits.push("Recommendation: hand off to a VIP manager immediately.");
+    else if(flags.some(f => f.flag === "bonus_hunter")) bits.push("Recommendation: hold the bonus until manual review.");
+    else if(v.risk_level === "high") bits.push("Recommendation: review before paying out.");
+    return bits.join(" ");
+  }
 
-    const score = v.vip_score, arc = $("gaugeArc");
-    arc.style.strokeDashoffset = 301.6 * (1 - score / 100);
-    $("vipScore").textContent = score;
-    $("archetype").textContent = v.archetype;
+  function render(body){
+    const v = body.verdict, m = body.metrics || {};
+    $("result").classList.remove("hidden");
+    $("demoBadge").classList.toggle("hidden", !body.sample);
+    $("demoBadge").textContent = "SAMPLE";
+    $("walletsCard").classList.add("hidden");
 
+    $("gaugeArc").style.strokeDashoffset = 301.6 * (1 - v.vip_score / 100);
+    $("vipScore").textContent = v.vip_score;
+    $("archetype").textContent = (v.archetype || "").replace(/_/g, " ");
     const pill = $("riskPill");
     pill.className = "risk-pill risk-" + v.risk_level;
     pill.textContent = "Risk: " + v.risk_level;
-    $("summary").textContent = v.summary;
+    $("summary").textContent = summarize(v, m);
 
     $("metrics").innerHTML = [
-      [usd(p.total_in_usdt), "incoming volume"], [usd(p.usdt_balance), "USDT balance"],
-      [usd(p.avg_in_usdt), "avg deposit"], [usd(p.max_in_usdt), "max deposit"],
-      [Math.round(p.wallet_age_days) + " days", "wallet age"], [p.transfers_analyzed, "transfers analyzed"],
+      [usd(m.total_in_usd), "incoming volume"], [usd(m.balance_usd), "balance"],
+      [usd(m.avg_in_usd), "avg deposit"], [usd(m.total_out_usd), "outgoing volume"],
+      [Math.round(m.wallet_age_days || 0) + " days", "wallet age"],
+      [m.transfers_analyzed || 0, "transfers analyzed"],
     ].map(([val, l]) => `<div class="metric"><div class="v">${val}</div><div class="l">${l}</div></div>`).join("");
 
     const fl = v.risk_flags || [];
     $("flags").innerHTML = fl.length
-      ? fl.map(f => `<div class="flag"><span class="dot" style="background:${f.positive ? "var(--green)" : "var(--red)"}"></span>${f.text}</div>`).join("")
+      ? fl.map(f => `<div class="flag"><span class="dot" style="background:${f.positive ? "var(--green)" : "var(--red)"}"></span>${FLAG_TEXT[f.flag] || f.flag}</div>`).join("")
       : '<div style="color:var(--muted);font-size:13.5px">No flags — clean profile</div>';
 
     const fp = v.casino_footprint || [];
     $("footprint").innerHTML = fp.length
-      ? fp.map(c => `<div class="bar-row"><div class="top"><span>${c.name}</span><span>${usd(c.flow_usdt)} · ${c.share_pct}%</span></div><div class="bar"><i style="width:${c.share_pct}%"></i></div></div>`).join("")
-      : '<div style="color:var(--muted);font-size:13.5px">No interactions with labeled casinos found.<br><br>This is normal early on: footprint accuracy grows as the casino label database expands.</div>';
+      ? fp.map(c => `<div class="bar-row"><div class="top"><span>${c.name}</span>
+          <span>${usd(c.deposits_usd)} deposited · ${Math.round(c.share_pct)}%</span></div>
+          <div class="bar"><i style="width:${c.share_pct}%"></i></div></div>`).join("")
+      : '<div style="color:var(--muted);font-size:13.5px">No flows to labeled casinos found.<br><br>' +
+        'That is a statement about our label database, not proof the player is clean — coverage grows every week.</div>';
 
-    $("cps").innerHTML = (p.counterparties || []).slice(0, 8).map(c => `
-      <tr><td>${c.name ? c.name + " " : ""}${c.type ? `<span class="tag tag-${c.type}">${c.type}</span>` : ""}<div class="mono">${c.address.slice(0,14)}…</div></td>
-      <td>${usd(c.in_usdt)}</td><td>${usd(c.out_usdt)}</td></tr>`).join("");
+    $("cps").innerHTML = (body.counterparties || []).map(c => `
+      <tr><td>${c.name ? c.name + " " : ""}${c.type ? `<span class="tag tag-${c.type}">${c.type}</span>` : ""}
+      <div class="mono">${(c.address || "").slice(0, 14)}…</div></td>
+      <td>${usd(c.in_usd)}</td><td>${usd(c.out_usd)}</td></tr>`).join("");
+
+    /* Межі покриття — частина вердикту, а не дрібний шрифт: клієнт має
+       бачити, на чому побудовано висновок, ще до того як знайде переказ,
+       якого ми «не помітили». */
+    const cov = v.coverage || {};
+    const chains = Object.entries(cov.chains || {})
+      .map(([c, assets]) => `<b>${c.toUpperCase()}</b>: ${assets.join(", ")}`).join(" · ");
+    const parts = [];
+    if(chains) parts.push("Built on " + chains + ".");
+    if((cov.not_covered_chains || []).length) parts.push("Not read at all: " + cov.not_covered_chains.join(", ") + ".");
+    if(v.unmatched_gambling_flow_pct != null)
+      parts.push(`Unrecognised gambling flow: <b>${Math.round(v.unmatched_gambling_flow_pct)}%</b> — addresses we have not labeled yet.`);
+    if(v.defi_flow_usd) parts.push(`Of the volume, ${usd(v.defi_flow_usd)} is DEX swapping, not player money.`);
+    if(v.funding_origin) parts.push(`Funds trace back to <b>${v.funding_origin.entity_name}</b> through an intermediate address — indirect link, not proof of play.`);
+    $("coverage").innerHTML = '<div class="cov-line">' + parts.join("<br>") + "</div>";
   }
 
+  $("signup").addEventListener("click", signup);
+  $("email").addEventListener("keydown", e => { if(e.key === "Enter") signup(); });
   $("go").addEventListener("click", run);
   $("addr").addEventListener("keydown", e => { if(e.key === "Enter") run(); });
-  document.querySelectorAll("[data-demo]").forEach(a =>
-    a.addEventListener("click", () => { $("addr").value = a.dataset.demo; run(); }));
-}
+  document.querySelectorAll("[data-sample]").forEach(a =>
+    a.addEventListener("click", () => { $("addr").value = a.dataset.sample; run(); }));
 
-/* for node tests */
-if(typeof module !== "undefined") module.exports = {computeVerdict, DEMO};
+  paintGate();
+}
 </script>
 </body>
 </html>
