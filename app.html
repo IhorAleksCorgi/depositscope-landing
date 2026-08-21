@@ -6,6 +6,7 @@
 <title>DepositScope — Wallet Verdict</title>
 <meta name="description" content="Player wallet verdict in seconds — VIP score, risk flags, gambling footprint. TRON / USDT.">
 <style>
+  html{scroll-behavior:smooth}
   :root{
     --bg:#08070f; --card:#12111f; --card2:#1a1830; --text:#eef0fa; --muted:#8f93ad;
     --accent:#7c5cff; --accent2:#22d3ee; --green:#2ee6a8; --yellow:#fbbf24; --red:#ff5c7a; --border:#26243d;
@@ -28,7 +29,10 @@
   button{background:var(--grad);border:none;border-radius:12px;padding:0 26px;color:#fff;font-size:15px;font-weight:700;cursor:pointer;transition:.15s}
   button:hover{filter:brightness(1.12)}
   button:disabled{opacity:.5;cursor:wait}
-  .demos{color:var(--muted);font-size:13px;margin-bottom:30px}
+  .demos{color:var(--muted);font-size:13px;margin-bottom:30px;display:flex;
+         align-items:center;flex-wrap:wrap;gap:10px 14px}
+  .demos .cta{margin-left:auto;color:var(--text);border-bottom:1px solid var(--violet);
+              white-space:nowrap}
   .demos a{color:var(--accent2);cursor:pointer;text-decoration:none;margin-right:10px}
   .demos a.on{color:var(--text);border-bottom:2px solid var(--violet);padding-bottom:2px}
   /* !important, бо .demo-badge і .checks задають свій display і йдуть нижче:
@@ -96,32 +100,13 @@
   </div>
   <div class="tagline">Player-level verdict in seconds — VIP, risk, gambling footprint. One wallet or the player's whole entity.</div>
 
-  <div id="gate" class="gate hidden" style="margin-top:26px">
-    <div class="gate-head">Check your own players — 10 free verdicts</div>
-    <p class="gate-note">Not a sandbox: you get an account in the product itself, with the same
-    scoring and the same label database our clients call in production. Leave a work email,
-    confirm the code, and your workspace opens right away.</p>
-    <div id="emailRow" class="gate-row">
-      <input id="email" type="email" placeholder="you@casino.com" spellcheck="false">
-      <input id="company" placeholder="Casino (optional)" spellcheck="false">
-      <button id="signup">Open the demo</button>
-    </div>
-    <div id="codeRow" class="gate-row hidden">
-      <input id="code" inputmode="numeric" maxlength="6" placeholder="6-digit code" spellcheck="false">
-      <button id="verify">Confirm</button>
-      <a id="resend" class="resend">Send it again</a>
-    </div>
-    <div id="codeNote" class="gate-note hidden"></div>
-    <div id="gateErr" class="error hidden"></div>
-  </div>
-
-
   <div class="demos">
     <span id="checksLeft" class="checks hidden"></span>
     <b style="color:var(--text)">A real verdict, computed by the product:</b>
     <a data-sample="sample:whale" class="on">whale</a>
     <a data-sample="sample:hunter">bonus hunter</a>
     <a data-sample="sample:regular">regular player</a>
+    <a href="#gate" class="cta">Check your own players — 10 free →</a>
   </div>
 
   <div id="progress" class="progress hidden"></div>
@@ -165,6 +150,26 @@
       <div class="card full"><h3>What this verdict is built on</h3><div id="coverage"></div></div>
     </div>
   </div>
+
+  <div id="gate" class="gate hidden" style="margin-top:8px">
+    <div class="gate-head">Check your own players — 10 free verdicts</div>
+    <p class="gate-note">Not a sandbox: you get an account in the product itself, with the same
+    scoring and the same label database our clients call in production. Leave a work email,
+    confirm the code, and your workspace opens right away.</p>
+    <div id="emailRow" class="gate-row">
+      <input id="email" type="email" placeholder="you@casino.com" spellcheck="false">
+      <input id="company" placeholder="Casino (optional)" spellcheck="false">
+      <button id="signup">Open the demo</button>
+    </div>
+    <div id="codeRow" class="gate-row hidden">
+      <input id="code" inputmode="numeric" maxlength="6" placeholder="6-digit code" spellcheck="false">
+      <button id="verify">Confirm</button>
+      <a id="resend" class="resend">Send it again</a>
+    </div>
+    <div id="codeNote" class="gate-note hidden"></div>
+    <div id="gateErr" class="error hidden"></div>
+  </div>
+
 
   <div class="footer">
     Verdicts come from the live DepositScope API — the same profiler, scoring and label database
