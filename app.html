@@ -30,6 +30,7 @@
   button:disabled{opacity:.5;cursor:wait}
   .demos{color:var(--muted);font-size:13px;margin-bottom:30px}
   .demos a{color:var(--accent2);cursor:pointer;text-decoration:none;margin-right:10px}
+  .demos a.on{color:var(--text);border-bottom:2px solid var(--violet);padding-bottom:2px}
   /* !important, бо .demo-badge і .checks задають свій display і йдуть нижче:
      без цього значок SAMPLE лишався б на живому вердикті — тобто рівно
      там, де ми доводимо, що це не намальовані дані. */
@@ -95,7 +96,7 @@
   </div>
   <div class="tagline">Player-level verdict in seconds — VIP, risk, gambling footprint. One wallet or the player's whole entity.</div>
 
-  <div id="gate" class="gate hidden">
+  <div id="gate" class="gate hidden" style="margin-top:26px">
     <div class="gate-head">Check your own players — 10 free verdicts</div>
     <p class="gate-note">Not a sandbox: you get an account in the product itself, with the same
     scoring and the same label database our clients call in production. Leave a work email,
@@ -114,13 +115,11 @@
     <div id="gateErr" class="error hidden"></div>
   </div>
 
-  <div class="searchbar">
-    <input id="addr" placeholder="Player wallet — TRON, Ethereum or BNB Chain" spellcheck="false">
-    <button id="go">Get verdict</button>
-  </div>
+
   <div class="demos">
     <span id="checksLeft" class="checks hidden"></span>
-    Samples (no check spent): <a data-sample="sample:whale">whale</a>
+    <b style="color:var(--text)">A real verdict, computed by the product:</b>
+    <a data-sample="sample:whale" class="on">whale</a>
     <a data-sample="sample:hunter">bonus hunter</a>
     <a data-sample="sample:regular">regular player</a>
   </div>
@@ -531,15 +530,19 @@ if(typeof document !== "undefined"){
   /* ---------- реєстрація ---------- */
 
   function paintGate(){
+    /* Реєстрація ховається лише тоді, коли людина вже має доступ. Свої
+       адреси вона перевіряє в продукті, тож поля вводу тут більше немає:
+       екран, який пропонує дію, а сам її не виконує, читається як зламаний. */
     $("gate").classList.toggle("hidden", !!apiKey);
-    $("addr").disabled = !apiKey;
-    $("go").disabled = !apiKey;
-    $("addr").placeholder = apiKey
-      ? "Player wallet — TRON, Ethereum or BNB Chain"
-      : "Open the demo above to check your own wallets";
     const badge = $("checksLeft");
     badge.classList.toggle("hidden", checksLeft === null);
     if(checksLeft !== null) badge.textContent = checksLeft + " free checks left";
+  }
+
+  function showSample(key, link){
+    render(SAMPLES[key]);
+    document.querySelectorAll("[data-sample]").forEach(a => a.classList.remove("on"));
+    if(link) link.classList.add("on");
   }
 
   let pendingEmail = "";
@@ -636,58 +639,6 @@ if(typeof document !== "undefined"){
     }
   }
 
-  /* ---------- перевірка адреси ---------- */
-
-  async function run(){
-    const raw = $("addr").value.trim();
-    if(!raw) return;
-    $("err").classList.add("hidden");
-    $("go").disabled = true;
-
-    try{
-      if(SAMPLES[raw]) { render(SAMPLES[raw]); return; }
-
-      const addrs = [...new Set(raw.split(/[\s,;]+/).filter(Boolean))];
-      const bad = addrs.find(a => !ADDRESS_RE.test(a));
-      if(bad) throw new Error("Not a TRON / Ethereum / BNB address: " + bad);
-      if(addrs.length > 1){
-        throw new Error("The demo checks one wallet per verdict. Merging several wallets " +
-                        "into one player entity is part of the product — ask us for a walkthrough.");
-      }
-
-      $("progress").textContent = "Reading the chain and scoring the wallet…";
-      $("progress").classList.remove("hidden");
-
-      const r = await fetch(API + "/v1/demo/verdict", {
-        method: "POST",
-        headers: {"content-type": "application/json", "authorization": "Bearer " + apiKey},
-        body: JSON.stringify({address: addrs[0]}),
-      });
-      const body = await r.json();
-
-      if(r.status === 402){
-        checksLeft = 0; paintGate();
-        throw new Error(body.detail + " — write to " + CONTACT + " and we will open the full audit.");
-      }
-      if(r.status === 401 || r.status === 403){
-        localStorage.removeItem(STORAGE_KEY); apiKey = ""; checksLeft = null; paintGate();
-        throw new Error("The demo key is no longer valid — open the demo again.");
-      }
-      if(!r.ok) throw new Error(refusal(body, "HTTP " + r.status));
-
-      checksLeft = body.checks_left;
-      paintGate();
-      render(body);
-    }catch(e){
-      $("result").classList.add("hidden");
-      $("err").textContent = e.message;
-      $("err").classList.remove("hidden");
-    }finally{
-      $("go").disabled = !apiKey;
-      $("progress").classList.add("hidden");
-    }
-  }
-
   /* ---------- показ ---------- */
 
   function summarize(v, m){
@@ -767,11 +718,13 @@ if(typeof document !== "undefined"){
   $("verify").addEventListener("click", verify);
   $("code").addEventListener("keydown", e => { if(e.key === "Enter") verify(); });
   $("resend").addEventListener("click", resend);
-  $("go").addEventListener("click", run);
-  $("addr").addEventListener("keydown", e => { if(e.key === "Enter") run(); });
   document.querySelectorAll("[data-sample]").forEach(a =>
-    a.addEventListener("click", () => { $("addr").value = a.dataset.sample; run(); }));
+    a.addEventListener("click", () => showSample(a.dataset.sample, a)));
 
+  /* Вердикт видно з першої секунди, без кліків і без пошти: головне питання
+     відвідувача — «що я отримаю», і відповідь має бути на екрані, а не за
+     формою реєстрації. */
+  showSample("sample:whale", document.querySelector('[data-sample="sample:whale"]'));
   paintGate();
 }
 </script>
