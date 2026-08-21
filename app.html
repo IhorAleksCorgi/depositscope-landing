@@ -97,8 +97,9 @@
 
   <div id="gate" class="gate hidden">
     <div class="gate-head">Check your own players — 10 free verdicts</div>
-    <p class="gate-note">Same engine our clients call in production: same scoring, same label
-    database. Leave a work email and the demo opens right here.</p>
+    <p class="gate-note">Not a sandbox: you get an account in the product itself, with the same
+    scoring and the same label database our clients call in production. Leave a work email,
+    confirm the code, and your workspace opens right away.</p>
     <div id="emailRow" class="gate-row">
       <input id="email" type="email" placeholder="you@casino.com" spellcheck="false">
       <input id="company" placeholder="Casino (optional)" spellcheck="false">
@@ -553,6 +554,17 @@ if(typeof document !== "undefined"){
     checksLeft = body.checks_left;
     localStorage.setItem(STORAGE_KEY, apiKey);
     $("codeRow").classList.add("hidden");
+
+    /* Підтверджена пошта відкриває САМ ПРОДУКТ, а не віджет на цій сторінці.
+       Дашборд живе на іншому домені, тож куку звідси не поставити — сервер
+       віддає одноразове посилання входу, і ми ведемо людину туди, поки її
+       інтерес найгарячіший. */
+    if(body.enter_url){
+      $("codeNote").textContent = "Готово — відкриваємо ваш кабінет…";
+      $("codeNote").classList.remove("hidden");
+      window.location = body.enter_url;
+      return;
+    }
     $("codeNote").classList.add("hidden");
     paintGate();
   }
