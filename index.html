@@ -26,7 +26,12 @@
   .logo span{background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
   .nav-links{display:flex;gap:28px;font-size:14px;color:var(--muted)}
   .nav-links a:hover{color:var(--text)}
-  .nav-cta{display:flex;gap:10px}
+  .nav-cta{display:flex;gap:10px;align-items:center}
+  /* Вхід — посилання, а не кнопка: у шапці вже дві кнопки, і третя
+     конкурувала б із «Get access», заради якого сторінка існує. */
+  .nav-login{color:var(--muted,#8f93ad);text-decoration:none;font-size:14px;
+             padding:0 6px;white-space:nowrap}
+  .nav-login:hover,.nav-login:focus-visible{color:#fff}
   .btn{display:inline-block;border-radius:11px;padding:10px 22px;font-size:14.5px;font-weight:700;cursor:pointer;transition:.18s}
   .btn-primary{background:var(--grad);color:#fff;box-shadow:0 4px 24px rgba(124,92,255,.35)}
   .btn-primary:hover{filter:brightness(1.12);box-shadow:0 6px 32px rgba(124,92,255,.5)}
@@ -124,7 +129,7 @@
   <div class="nav-links">
     <a href="#vip">VIP Detection</a><a href="#risk">Fraud Prevention</a><a href="#footprint">Footprint</a><a href="#entity">Entity Graph</a><a href="#how">How It Works</a>
   </div>
-  <div class="nav-cta"><a class="btn btn-ghost" href="mailto:hello@depositscope.com">Contact</a><a class="btn btn-primary" href="app.html#gate">Get access</a></div>
+  <div class="nav-cta"><a class="nav-login" href="https://app.depositscope.com/login">Log in</a><a class="btn btn-ghost" href="mailto:hello@depositscope.com">Contact</a><a class="btn btn-primary" href="app.html#gate">Get access</a></div>
 </div></nav>
 
 <header class="hero">

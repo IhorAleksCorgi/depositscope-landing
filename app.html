@@ -79,6 +79,11 @@
   .gate{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px 20px;margin-bottom:14px}
   .gate-head{font-weight:700;font-size:15px;margin-bottom:6px}
   .gate-note{color:var(--muted);font-size:13px;margin:0 0 12px;line-height:1.5}
+  /* Людина, що вже реєструвалась, поверталась на цю сторінку й не мала
+     куди подітись: форма пропонувала їй зареєструватись ще раз. */
+  .gate-have-account{color:var(--muted);font-size:13px;margin:10px 0 0}
+  .gate-have-account a{color:inherit;text-decoration:underline;text-underline-offset:2px}
+  .gate-have-account a:hover,.gate-have-account a:focus-visible{color:#fff}
   .gate-row{display:flex;gap:8px;flex-wrap:wrap}
   .gate-row input{flex:1 1 200px;background:var(--card2);border:1px solid var(--border);border-radius:10px;
     color:var(--text);padding:11px 13px;font-size:14px}
@@ -161,6 +166,7 @@
       <input id="company" placeholder="Casino (optional)" spellcheck="false">
       <button id="signup">Open the demo</button>
     </div>
+    <p class="gate-have-account">Already registered? <a href="https://app.depositscope.com/login">Log in to your account</a></p>
     <div id="codeRow" class="gate-row hidden">
       <input id="code" inputmode="numeric" maxlength="6" placeholder="6-digit code" spellcheck="false">
       <button id="verify">Confirm</button>
