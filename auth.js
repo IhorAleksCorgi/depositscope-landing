@@ -210,16 +210,22 @@
         var EN = {
           invalid_email: "That does not look like an email address.",
           disposable_email: "Please use a work email, not a disposable one.",
-          too_many_signups: "Too many sign-ups from this network today. Write to us instead.",
+          ip_quota: "Too many sign-ups from this network today. Write to us instead.",
           code_expired: "The code expired. Ask for a new one — it is quick.",
           code_mismatch: "That code does not match. Check the email and try again.",
           too_many_attempts: "Too many attempts. Ask for a new code.",
           no_signup: "Enter your email first — we will send a code.",
-          already_verified: "This email is already confirmed. Use Log in."
+          already_verified: "This email is already confirmed. Use Log in.",
+          resend_too_soon: "A code was just sent. Wait a moment before asking for another.",
+          send_failed: "Could not send the email. Try again in a minute, or write to us."
         };
-        return EN[d.code] || d.message || fallback;
+        // ЖОДНОГО d.message тут: сервер віддає його українською (DemoError
+        // навмисно розділяє код для машини й текст для людей на нашому
+        // боці — див. depositscope/core/demo.py). Якщо колись зʼявиться
+        // код без запису в EN, хай покаже загальний fallback, а не кирилицю.
+        return EN[d.code] || fallback;
       }
-      return (typeof d === "string" && d) || fallback;
+      return fallback;
     }
 
     panes.signup.addEventListener("submit", function (e) {
