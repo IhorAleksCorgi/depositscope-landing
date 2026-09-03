@@ -159,21 +159,12 @@
   <div id="gate" class="gate hidden" style="margin-top:8px">
     <div class="gate-head">Check your own players — 10 free verdicts</div>
     <p class="gate-note">Not a sandbox: you get an account in the product itself, with the same
-    scoring and the same label database that answers every API call. Leave a work email,
-    confirm the code, and your workspace opens right away.</p>
-    <div id="emailRow" class="gate-row">
-      <input id="email" type="email" placeholder="you@casino.com" spellcheck="false">
-      <input id="company" placeholder="Casino (optional)" spellcheck="false">
-      <button id="signup">Open the demo</button>
+    scoring and the same label database that answers every API call.</p>
+    <div class="gate-row">
+      <button data-auth="signup">Create an account</button>
     </div>
-    <p class="gate-have-account">Already registered? <a href="https://app.depositscope.com/login">Log in to your account</a></p>
-    <div id="codeRow" class="gate-row hidden">
-      <input id="code" inputmode="numeric" maxlength="6" placeholder="6-digit code" spellcheck="false">
-      <button id="verify">Confirm</button>
-      <a id="resend" class="resend">Send it again</a>
-    </div>
-    <div id="codeNote" class="gate-note hidden"></div>
-    <div id="gateErr" class="error hidden"></div>
+    <p class="gate-have-account">Already registered?
+      <a href="#" data-auth="login">Log in to your account</a></p>
   </div>
 
 
@@ -558,97 +549,9 @@ if(typeof document !== "undefined"){
 
   let pendingEmail = "";
 
-  function gateError(message){
-    $("gateErr").textContent = message;
-    $("gateErr").classList.remove("hidden");
-  }
-
-  function keyReceived(body){
-    apiKey = body.api_key;
-    checksLeft = body.checks_left;
-    localStorage.setItem(STORAGE_KEY, apiKey);
-    $("codeRow").classList.add("hidden");
-
-    /* Підтверджена пошта відкриває САМ ПРОДУКТ, а не віджет на цій сторінці.
-       Дашборд живе на іншому домені, тож куку звідси не поставити — сервер
-       віддає одноразове посилання входу, і ми ведемо людину туди, поки її
-       інтерес найгарячіший. */
-    if(body.enter_url){
-      $("codeNote").textContent = "Готово — відкриваємо ваш кабінет…";
-      $("codeNote").classList.remove("hidden");
-      window.location = body.enter_url;
-      return;
-    }
-    $("codeNote").classList.add("hidden");
-    paintGate();
-  }
-
-  async function signup(){
-    const email = $("email").value.trim();
-    if(!email) return;
-    $("signup").disabled = true;
-    $("gateErr").classList.add("hidden");
-    try{
-      const r = await fetch(API + "/v1/demo/signup", {
-        method: "POST", headers: {"content-type": "application/json"},
-        body: JSON.stringify({email, company: $("company").value.trim() || null}),
-      });
-      const body = await r.json();
-      if(!r.ok) throw new Error(refusal(body, "Sign-up failed"));
-
-      /* Пошта підтверджується кодом. Якщо сервер каже, що підтвердження не
-         потрібне (пошта вже підтверджена або SMTP ще не налаштований), він
-         одразу віддає ключ — сторінка не вирішує це сама. */
-      if(!body.verification_required){ keyReceived(body); return; }
-
-      pendingEmail = email;
-      $("emailRow").classList.add("hidden");
-      $("codeRow").classList.remove("hidden");
-      $("codeNote").textContent = "We sent a 6-digit code to " + email +
-        ". It expires in 15 minutes — check spam if it is not there in a minute.";
-      $("codeNote").classList.remove("hidden");
-      $("code").focus();
-    }catch(e){
-      gateError(e.message);
-    }finally{
-      $("signup").disabled = false;
-    }
-  }
-
-  async function verify(){
-    const code = $("code").value.trim();
-    if(!code) return;
-    $("verify").disabled = true;
-    $("gateErr").classList.add("hidden");
-    try{
-      const r = await fetch(API + "/v1/demo/verify", {
-        method: "POST", headers: {"content-type": "application/json"},
-        body: JSON.stringify({email: pendingEmail, code}),
-      });
-      const body = await r.json();
-      if(!r.ok) throw new Error(refusal(body, "Wrong code"));
-      keyReceived(body);
-    }catch(e){
-      gateError(e.message);
-    }finally{
-      $("verify").disabled = false;
-    }
-  }
-
-  async function resend(){
-    $("gateErr").classList.add("hidden");
-    try{
-      const r = await fetch(API + "/v1/demo/resend", {
-        method: "POST", headers: {"content-type": "application/json"},
-        body: JSON.stringify({email: pendingEmail}),
-      });
-      const body = await r.json();
-      if(!r.ok) throw new Error(refusal(body, "Could not send"));
-      $("codeNote").textContent = "A new code is on its way to " + pendingEmail + ".";
-    }catch(e){
-      gateError(e.message);
-    }
-  }
+  /* Реєстрація й вхід живуть в auth.js — одне вікно на весь сайт.
+     Тут була друга реалізація тієї самої логіки: два екземпляри одного
+     правила завжди розходяться, і саме на цьому лендінг уже попікся. */
 
   /* ---------- показ ---------- */
 
@@ -724,11 +627,6 @@ if(typeof document !== "undefined"){
     $("coverage").innerHTML = '<div class="cov-line">' + parts.join("<br>") + "</div>";
   }
 
-  $("signup").addEventListener("click", signup);
-  $("email").addEventListener("keydown", e => { if(e.key === "Enter") signup(); });
-  $("verify").addEventListener("click", verify);
-  $("code").addEventListener("keydown", e => { if(e.key === "Enter") verify(); });
-  $("resend").addEventListener("click", resend);
   document.querySelectorAll("[data-sample]").forEach(a =>
     a.addEventListener("click", () => showSample(a.dataset.sample, a)));
 
@@ -739,5 +637,6 @@ if(typeof document !== "undefined"){
   paintGate();
 }
 </script>
+<script src="auth.js"></script>
 </body>
 </html>
