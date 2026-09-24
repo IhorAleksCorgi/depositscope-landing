@@ -53,6 +53,10 @@
     '      <input id="authEmail" type="email" autocomplete="email" placeholder="you@casino.com" required>',
     '      <label for="authCompany">Casino <span class="auth-opt">(optional)</span></label>',
     '      <input id="authCompany" autocomplete="organization" placeholder="Brand or company">',
+    '      <label class="auth-check"><input id="authTerms" type="checkbox">',
+    '        <span>I agree to the <a href="/terms" target="_blank" rel="noopener">Terms of',
+    '        Service</a> and have read the <a href="/privacy" target="_blank"',
+    '        rel="noopener">Privacy Policy</a>.</span></label>',
     '      <button class="auth-go" id="authSignup" type="submit">Create account</button>',
     '      <p class="auth-fine">Confirming your email opens the product itself — the same',
     '         scoring and the same label database that answers every API call.</p>',
@@ -112,6 +116,12 @@
     '.auth-pane input{width:100%;background:#1a1830;border:1px solid #26243d;border-radius:10px;',
     '  color:#eef0fa;padding:11px 13px;font:inherit;font-size:14px;margin-bottom:14px}',
     '.auth-pane input:focus{outline:none;border-color:#7c5cff}',
+    '.auth-pane .auth-check{display:flex;gap:9px;align-items:flex-start;font-size:12.5px;',
+    '  line-height:1.5;color:#c9cce0;margin:2px 0 14px;cursor:pointer}',
+    '.auth-pane .auth-check input{width:16px;height:16px;margin:2px 0 0;padding:0;flex-shrink:0;',
+    '  accent-color:#7c5cff}',
+    '.auth-pane .auth-check a{color:#22d3ee;text-decoration:none}',
+    '.auth-pane .auth-check a:hover{text-decoration:underline}',
     '.auth-go{width:100%;background:linear-gradient(90deg,#7c5cff,#22d3ee);border:0;border-radius:11px;',
     '  color:#fff;font:inherit;font-size:14px;font-weight:700;padding:12px;cursor:pointer}',
     '.auth-go[disabled]{opacity:.55;cursor:default}',
@@ -211,6 +221,7 @@
           invalid_email: "That does not look like an email address.",
           disposable_email: "Please use a work email, not a disposable one.",
           ip_quota: "Too many sign-ups from this network today. Write to us instead.",
+          terms_required: "Please accept the Terms of Service to create an account.",
           code_expired: "The code expired. Ask for a new one — it is quick.",
           code_mismatch: "That code does not match. Check the email and try again.",
           too_many_attempts: "Too many attempts. Ask for a new code.",
@@ -232,12 +243,19 @@
       e.preventDefault();
       var email = $("authEmail").value.trim();
       if (!email) return;
+      // Сервер однаково перевірить сам — тут лише щоб не ганяти запит заради
+      // відмови й сказати людині зрозуміло, чого бракує.
+      if (!$("authTerms").checked) {
+        fail("Please accept the Terms of Service to create an account.");
+        return;
+      }
       var btn = $("authSignup");
       btn.disabled = true;
       clearErr();
       fetch(API + "/v1/demo/signup", {
         method: "POST", headers: { "content-type": "application/json" },
-        body: JSON.stringify({ email: email, company: $("authCompany").value.trim() || null })
+        body: JSON.stringify({ email: email, company: $("authCompany").value.trim() || null,
+                               accept_terms: true })
       }).then(function (r) {
         return r.json().then(function (b) { return { ok: r.ok, body: b }; });
       }).then(function (res) {
