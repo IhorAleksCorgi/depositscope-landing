@@ -126,6 +126,28 @@
   .plan ul{list-style:none;display:flex;flex-direction:column;gap:7px;font-size:13.5px;margin-top:auto}
   .plan li{display:flex;gap:9px;line-height:1.45;color:var(--muted)}
   .plan li::before{content:"→";color:#7c5cff;flex-shrink:0}
+  .plans{grid-template-columns:repeat(3,1fr)}
+  .plan .top{display:flex;justify-content:space-between;align-items:center;gap:8px}
+  .plan .badge{font-size:10.5px;text-transform:uppercase;letter-spacing:.08em;font-weight:700;
+               border-radius:999px;padding:3px 9px;background:#7c5cff;color:#fff}
+  .plan .lims{list-style:none;border-top:1px solid var(--border);padding-top:14px;margin-top:auto;
+              display:flex;flex-direction:column;gap:8px;font-size:13.5px}
+  .plan .lims li{display:flex;justify-content:space-between;gap:10px;color:var(--muted)}
+  .plan .lims li::before{content:none}
+  .plan .lims b{color:var(--text);font-weight:600}
+  .ent{margin-top:16px;background:var(--card);border:1px solid var(--border);border-radius:18px;
+       padding:24px 26px;text-align:left;display:flex;align-items:center;justify-content:space-between;
+       gap:18px 28px;flex-wrap:wrap}
+  .ent .l{flex:1 1 380px;display:flex;flex-direction:column;gap:6px}
+  .ent .t{font-size:19px;font-weight:700}
+  .ent .d{font-size:14px;color:var(--muted);line-height:1.55}
+  .incl{margin-top:44px;text-align:left}
+  .incl h3{font-size:19px;margin-bottom:16px;text-align:center}
+  .incl-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:0 32px}
+  .incl-grid div{display:flex;gap:11px;padding:12px 0;border-bottom:1px solid var(--border)}
+  .incl-grid div::before{content:"✓";color:#2ee6a8;font-weight:700;flex-shrink:0}
+  .incl-grid b{display:block;font-size:14px;margin-bottom:2px}
+  .incl-grid span{font-size:13px;color:var(--muted);line-height:1.5}
   .audit{margin-top:22px;background:var(--card);border:1px solid var(--border);border-radius:18px;
          padding:24px 26px;text-align:left;font-size:14.5px;color:var(--muted);line-height:1.65}
   .audit b{color:var(--text)}
@@ -136,11 +158,10 @@
   footer a{color:var(--muted)}
   footer a:hover{color:var(--text)}
 
-  @media(max-width:1040px){ .plans{grid-template-columns:repeat(2,1fr)} }
   @media(max-width:820px){
     .split{grid-template-columns:1fr;gap:36px}
     .split.rev>.txt{order:0}
-    .features,.steps,.stats,.plans{grid-template-columns:1fr}
+    .features,.steps,.stats,.plans,.incl-grid{grid-template-columns:1fr}
     .nav-links{display:none}
   }
 </style>
@@ -302,50 +323,60 @@
 
   <div class="plans">
     <div class="plan">
-      <span class="tier">Starter</span>
+      <div class="top"><span class="tier">Starter</span></div>
       <span class="amt">€490<small> / month</small></span>
-      <span class="vol">300 verdicts · 100 wallets monitored</span>
-      <span class="say">A verdict at the moment of deposit, FTD alert, dashboard.</span>
-      <ul>
-        <li>Wallet Verdict API</li>
-        <li>FTD alert in Telegram</li>
-        <li>Dashboard and alerts</li>
+      <span class="say">One brand getting started with on-chain player intelligence.</span>
+      <ul class="lims">
+        <li>Verdicts / month<b>300</b></li>
+        <li>Wallets monitored<b>100</b></li>
+        <li>Database audit<b>from Growth up</b></li>
       </ul>
     </div>
     <div class="plan hot">
-      <span class="tier">Growth</span>
+      <div class="top"><span class="tier">Growth</span><span class="badge">Recommended</span></div>
       <span class="amt">€1 190<small> / month</small></span>
-      <span class="vol">1 500 verdicts · 500 wallets monitored</span>
-      <span class="say">Plus the player as a whole, and where they go from you.</span>
-      <ul>
-        <li>Everything in Starter</li>
-        <li>Player Entity: every wallet, one person</li>
-        <li>Churn to a competitor</li>
-        <li>Share of wallet</li>
+      <span class="say">An established operator verdicting most of its first deposits.</span>
+      <ul class="lims">
+        <li>Verdicts / month<b>1 500</b></li>
+        <li>Wallets monitored<b>500</b></li>
+        <li>Database audit<b>available separately</b></li>
       </ul>
     </div>
     <div class="plan">
-      <span class="tier">Scale</span>
+      <div class="top"><span class="tier">Scale</span></div>
       <span class="amt">€2 990<small> / month</small></span>
-      <span class="vol">6 000 verdicts · 2 500 wallets monitored</span>
-      <span class="say">Plus multi-accounts and links between players.</span>
-      <ul>
-        <li>Everything in Growth</li>
-        <li>Anti-abuse via on-chain graph</li>
-        <li>Entity L2</li>
+      <span class="say">A multi-brand group with monitoring across the whole player base.</span>
+      <ul class="lims">
+        <li>Verdicts / month<b>6 000</b></li>
+        <li>Wallets monitored<b>2 500</b></li>
+        <li>Database audit<b>available separately</b></li>
       </ul>
     </div>
-    <div class="plan">
-      <span class="tier">Enterprise</span>
-      <span class="amt">Custom<small> / by agreement</small></span>
-      <span class="vol">Volumes and SLA to fit</span>
-      <span class="say">Custom volumes, custom terms, a team that knows your setup.</span>
-      <ul>
-        <li>Everything in Scale</li>
-        <li>Custom limits and SLA</li>
-        <li>Database audit by agreement</li>
-        <li>Dedicated onboarding</li>
-      </ul>
+  </div>
+
+  <div class="ent">
+    <div class="l">
+      <span class="tier" style="font-size:11.5px;text-transform:uppercase;letter-spacing:1.3px;color:var(--muted)">Enterprise</span>
+      <span class="t">Custom pricing</span>
+      <span class="d">Custom volumes and terms, an SLA, the database audit included by agreement
+        and onboarding with a team that knows your setup.</span>
+    </div>
+    <a class="btn btn-ghost" href="mailto:hello@depositscope.com?subject=Enterprise%20plan">Talk to us</a>
+  </div>
+
+  <div class="incl">
+    <h3>Included in every plan</h3>
+    <div class="incl-grid">
+      <div><p><b>Wallet verdict at first deposit</b><span>VIP score and risk level, kept separate, in seconds</span></p></div>
+      <div><p><b>Gambling footprint</b><span>Which other casinos the player deposits to</span></p></div>
+      <div><p><b>Player entity</b><span>Every wallet of a player scored as one person</span></p></div>
+      <div><p><b>Likely other wallets</b><span>Wallets we find ourselves via shared exchange deposits</span></p></div>
+      <div><p><b>Share of wallet</b><span>How much of the player's play goes to you vs. competitors</span></p></div>
+      <div><p><b>Churn to a competitor</b><span>An alert when a player starts depositing elsewhere</span></p></div>
+      <div><p><b>Withdrawal risk</b><span>Checks on the destination before you pay out</span></p></div>
+      <div><p><b>Multi-account detection</b><span>Players linked through the on-chain graph</span></p></div>
+      <div><p><b>Sanctions and illicit exposure</b><span>OFAC, EU and UK lists plus mixer and scam labels</span></p></div>
+      <div><p><b>Alerts and integration</b><span>REST API, webhooks, Telegram alerts and the dashboard</span></p></div>
     </div>
   </div>
 
