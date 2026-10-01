@@ -26,6 +26,11 @@
   .logo span{background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
   .nav-links{display:flex;gap:28px;font-size:14px;color:var(--muted)}
   .nav-links a:hover{color:var(--text)}
+  /* Розділ, на якому зараз читач (підсвічує скрипт унизу сторінки). */
+  .nav-links a{position:relative;transition:color .15s}
+  .nav-links a.on{color:var(--text)}
+  .nav-links a.on::after{content:"";position:absolute;left:0;right:0;bottom:-6px;height:2px;
+    border-radius:2px;background:var(--grad)}
   .nav-cta{display:flex;gap:10px;align-items:center}
   /* Вхід — посилання, а не кнопка: у шапці вже дві кнопки, і третя
      конкурувала б із «Get access», заради якого сторінка існує. */
@@ -174,7 +179,7 @@
 <nav><div class="wrap nav-in">
   <div class="logo">Deposit<span>Scope</span></div>
   <div class="nav-links">
-    <a href="#vip">VIP Detection</a><a href="#risk">Fraud Prevention</a><a href="#footprint">Footprint</a><a href="#entity">Entity Graph</a><a href="#how">How It Works</a><a href="#pricing">Pricing</a>
+    <a href="#vip">VIP Detection</a><a href="#risk">Fraud Prevention</a><a href="#footprint">Footprint</a><a href="#entity">Entity Graph</a><a href="#pricing">Pricing</a>
   </div>
   <div class="nav-cta"><a class="nav-login nav-demo" href="#" data-demo="nav">Book a demo</a><a class="btn btn-ghost" href="#" data-auth="login">Log in</a><a class="btn btn-primary" href="#" data-auth="signup">Sign up</a></div>
 </div></nav>
@@ -409,6 +414,35 @@
   <div>Verdicts are built on public on-chain data — every one states the chains and assets behind it</div>
 </footer></div>
 
+<script>
+/* Підсвітка розділу в шапці. Активний — останній <section>, верх якого
+   вже пройшов лінію трохи нижче шапки. Беремо ВСІ секції, а не лише ті, що
+   є в меню: на «How it works» чи фінальному блоці підсвітки не має бути
+   зовсім, а не лишатись на попередньому пункті. */
+(function () {
+  var links = {};
+  Array.prototype.forEach.call(document.querySelectorAll('.nav-links a[href^="#"]'), function (a) {
+    links[a.getAttribute("href").slice(1)] = a;
+  });
+  var sections = document.querySelectorAll("section");
+  var current = null, queued = false;
+  function update() {
+    queued = false;
+    var line = 66 + window.innerHeight * 0.3, id = null;
+    for (var i = 0; i < sections.length; i++) {
+      if (sections[i].getBoundingClientRect().top <= line) id = sections[i].id || null;
+    }
+    if (id === current) return;
+    if (current && links[current]) { links[current].classList.remove("on"); links[current].removeAttribute("aria-current"); }
+    if (id && links[id]) { links[id].classList.add("on"); links[id].setAttribute("aria-current", "true"); }
+    current = id;
+  }
+  function onScroll() { if (!queued) { queued = true; requestAnimationFrame(update); } }
+  window.addEventListener("scroll", onScroll, { passive: true });
+  window.addEventListener("resize", onScroll);
+  update();
+})();
+</script>
 <script src="auth.js"></script>
 <script src="demo.js"></script>
 <!-- Cloudflare Web Analytics: cookieless page-view counter -->

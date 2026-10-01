@@ -28,8 +28,8 @@
     '          <label for="dName">First and last name *</label></div>',
     '        <div class="demo-f"><input id="dEmail" name="email" type="email" placeholder=" " autocomplete="email" required maxlength="200">',
     '          <label for="dEmail">Work email *</label></div>',
-    '        <div class="demo-f"><input id="dPhone" name="phone" placeholder=" " autocomplete="tel" required maxlength="64">',
-    '          <label for="dPhone">Phone or Telegram *</label></div>',
+    '        <div class="demo-f"><input id="dPhone" name="phone" placeholder=" " autocomplete="tel" maxlength="64">',
+    '          <label for="dPhone">Phone or Telegram</label></div>',
     '        <div class="demo-row">',
     '          <div class="demo-f"><input id="dCompany" name="company" placeholder=" " autocomplete="organization" required maxlength="160">',
     '            <label for="dCompany">Company *</label></div>',
@@ -121,7 +121,6 @@
     invalid_email: "That does not look like an email address.",
     disposable_email: "Please use a work email, not a disposable one.",
     name_required: "Please tell us your name.",
-    phone_required: "Please leave a phone number or Telegram handle.",
     company_required: "Please tell us which company you are with.",
     too_long: "One of the fields is too long — please shorten it.",
     ip_quota: "We already have several requests from your network today. Write to hello@depositscope.com instead."
@@ -186,7 +185,7 @@
       var v = function (id) { return $(id).value.trim(); };
       // Сервер перевірить сам; тут — лише щоб підсвітити порожнє поле,
       // а не ганяти запит заради відмови.
-      var missing = ["dName", "dEmail", "dPhone", "dCompany"].filter(function (id) { return !v(id); });
+      var missing = ["dName", "dEmail", "dCompany"].filter(function (id) { return !v(id); });
       missing.forEach(function (id) { $(id).parentNode.classList.add("bad"); });
       if (missing.length) {
         fail("Please fill in the fields marked with *.");
@@ -198,7 +197,7 @@
       fetch(API + "/v1/demo/request", {
         method: "POST", headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          name: v("dName"), email: v("dEmail"), phone: v("dPhone"), company: v("dCompany"),
+          name: v("dName"), email: v("dEmail"), phone: v("dPhone") || null, company: v("dCompany"),
           position: v("dPosition") || null, message: v("dMessage") || null,
           source: source || null, website: $("dWebsite").value || null
         })
