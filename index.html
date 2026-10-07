@@ -90,7 +90,7 @@
   .bullets{margin-top:24px;display:flex;flex-direction:column;gap:12px}
   .bullets li{list-style:none;display:flex;gap:12px;font-size:15.5px;align-items:baseline}
   .bullets li::before{content:"";width:8px;height:8px;border-radius:50%;flex-shrink:0;position:relative;top:-1px}
-  .b-vip li::before{background:#c084fc}.b-risk li::before{background:var(--red)}.b-foot li::before{background:var(--cyan)}.b-ent li::before{background:var(--yellow)}
+  .b-vip li::before{background:#c084fc}.b-risk li::before{background:var(--red)}.b-foot li::before{background:var(--cyan)}.b-ent li::before{background:var(--yellow)}.b-aff li::before{background:#2ee6a8}
 
   /* MOCK CARDS */
   .mock{position:relative;background:linear-gradient(var(--card),var(--card)) padding-box,linear-gradient(140deg,rgba(124,92,255,.6),rgba(244,114,182,.35),rgba(34,211,238,.5)) border-box;border:1px solid transparent;border-radius:20px;padding:24px;box-shadow:0 30px 90px rgba(124,92,255,.12)}
@@ -193,7 +193,7 @@
 <nav><div class="wrap nav-in">
   <div class="logo">Deposit<span>Scope</span></div>
   <div class="nav-links">
-    <a href="#vip">VIP Detection</a><a href="#risk">Fraud Prevention</a><a href="#footprint">Footprint</a><a href="#entity">Entity Graph</a><a href="#pricing">Pricing</a>
+    <a href="#vip">VIP Detection</a><a href="#risk">Fraud Prevention</a><a href="#footprint">Footprint</a><a href="#entity">Entity Graph</a><a href="#affiliate">Affiliates</a><a href="#pricing">Pricing</a>
   </div>
   <div class="nav-cta"><a class="nav-login nav-demo" href="#" data-demo="nav">Book a demo</a><a class="btn btn-ghost" href="#" data-auth="login">Log in</a><a class="btn btn-primary" href="#" data-auth="signup">Sign up</a></div>
 </div></nav>
@@ -231,6 +231,7 @@
       <li>VIP score 0–100 based on capital, volume, and activity patterns</li>
       <li>Telegram alert or CRM webhook fired at first deposit</li>
       <li>Net worth estimate and KYC-exchange linkage</li>
+      <li>Wallet sign-up? Score the player before the first deposit — and make the welcome offer fit who they are</li>
     </ul>
   </div>
   <div class="mock">
@@ -318,13 +319,37 @@
   </div>
 </div></section>
 
-<section id="how">
+<section id="affiliate">
+  <div class="orb" style="width:380px;height:380px;background:#2ee6a8;top:-120px;right:-180px;opacity:.11"></div>
+  <div class="wrap split">
+  <div class="txt">
+    <div class="chip" style="color:#2ee6a8;border-color:rgba(46,230,168,.4);background:rgba(46,230,168,.08)">Affiliate Quality</div>
+    <h2>Know what your partners are really sending you</h2>
+    <p class="lead">An affiliate's report shows sign-ups and first deposits. It doesn't show who those players are. Run the wallets a partner brought through DepositScope and see the traffic for what it is — real players worth paying for, or bonus hunters and recycled multi-accounts.</p>
+    <ul class="bullets b-aff">
+      <li>Value mix of a partner's cohort: whales, regulars, small players</li>
+      <li>Share of bonus hunters and linked accounts in the traffic</li>
+      <li>Where else these players already deposit — fresh audience or recycled from competitors</li>
+      <li>Compare partners side by side before renewing a CPA deal</li>
+    </ul>
+  </div>
+  <div class="mock">
+    <div class="mock-head"><b>Affiliate cohort · Partner A</b><span class="live">412 WALLETS</span></div>
+    <div class="bar-row"><div class="top"><span>VIP potential</span><span>27 · 7%</span></div><div class="bar"><i style="width:7%;background:linear-gradient(90deg,#c084fc,#7c5cff)"></i></div></div>
+    <div class="bar-row"><div class="top"><span>Regular players</span><span>198 · 48%</span></div><div class="bar"><i style="width:48%;background:linear-gradient(90deg,#2ee6a8,#22d3ee)"></i></div></div>
+    <div class="bar-row"><div class="top"><span>Bonus hunter pattern</span><span>124 · 30%</span></div><div class="bar"><i style="width:30%;background:linear-gradient(90deg,#ff5c7a,#f472b6)"></i></div></div>
+    <div class="bar-row"><div class="top"><span>Linked to other accounts</span><span>63 · 15%</span></div><div class="bar"><i style="width:15%;background:linear-gradient(90deg,#ff5c7a,#f472b6)"></i></div></div>
+    <div class="alert" style="margin-top:16px"><div class="ic">🚩</div><div><b>45% of this traffic is risky<span class="pill pill-risk">RISK</span></b><small>Partner B, same period: 12% — review the CPA terms</small></div><div class="t">now</div></div>
+  </div>
+</div></section>
+
+<section id="how" style="background:var(--bg2)">
   <div class="orb" style="width:420px;height:420px;background:#7c5cff;bottom:-200px;right:30%;opacity:.12"></div>
   <div class="wrap" style="text-align:center">
   <div class="chip chip-how">How It Works</div>
   <h2>Three steps to a verdict</h2>
   <div class="steps" style="text-align:left">
-    <div class="step"><em>01</em><b>Address or webhook</b><p>Paste a player's wallet manually — or send a first-deposit webhook from your platform.</p></div>
+    <div class="step"><em>01</em><b>Address or webhook</b><p>Paste a player's wallet manually, send a first-deposit webhook — or check the wallet at sign-up, if players register with one.</p></div>
     <div class="step"><em>02</em><b>On-chain analysis</b><p>The profiler collects wallet history, funding sources, and interactions with labeled casinos and exchanges.</p></div>
     <div class="step"><em>03</em><b>Verdict & action</b><p>VIP score, risk flags, and a recommendation — to your dashboard, Telegram, or straight into your CRM via API.</p></div>
   </div>
@@ -335,7 +360,7 @@
   </div>
 </div></section>
 
-<section id="pricing" style="background:var(--bg2)">
+<section id="pricing">
   <div class="orb" style="width:400px;height:400px;background:#22d3ee;top:-140px;left:-140px;opacity:.12"></div>
   <div class="wrap" style="text-align:center">
   <div class="chip chip-price">Pricing</div>
@@ -349,7 +374,7 @@
       <span class="amt">€490<small> / month</small></span>
       <span class="say">One brand getting started with on-chain player intelligence.</span>
       <ul class="lims">
-        <li>Verdicts / month<b>300</b></li>
+        <li>Players / month<b>300</b></li>
         <li>Wallets monitored<b>100</b></li>
         <li>Database audit<b>from Growth up</b></li>
       </ul>
@@ -359,7 +384,7 @@
       <span class="amt">€1 190<small> / month</small></span>
       <span class="say">An established operator verdicting most of its first deposits.</span>
       <ul class="lims">
-        <li>Verdicts / month<b>1 500</b></li>
+        <li>Players / month<b>1 500</b></li>
         <li>Wallets monitored<b>500</b></li>
         <li>Database audit<b>available separately</b></li>
       </ul>
@@ -367,9 +392,9 @@
     <div class="plan">
       <div class="top"><span class="tier">Scale</span></div>
       <span class="amt">€2 990<small> / month</small></span>
-      <span class="say">A multi-brand group with monitoring across the whole player base.</span>
+      <span class="say">A high-volume operator — thousands of deposits a day, one brand or many.</span>
       <ul class="lims">
-        <li>Verdicts / month<b>6 000</b></li>
+        <li>Players / month<b>6 000</b></li>
         <li>Wallets monitored<b>2 500</b></li>
         <li>Database audit<b>available separately</b></li>
       </ul>
